@@ -12,6 +12,8 @@ Actor(core/actor)
 NetworkNode(object/create)
 NetworkLink(object/create)
 
+DataSet(vis/dataset)
+
 Log(console/log)
 
 './views/network.hb' ~> body NetworkView
@@ -26,7 +28,8 @@ BodyEl selection -> element NetworkViewUpdate
 NetworkEl selection -> container Network
 
 '' -> :start Actor
-Actor addNode [id] ->    [id] in NetworkNode
+# bit trickey node is a reference
+Actor addNode -> add DataSet
 Actor addNode [id] -> [label] in NetworkNode
 
 Actor addLink [id] ->    [id] in NetworkLink
@@ -36,6 +39,8 @@ Actor addLink [id] ->    [id] in NetworkLink
 NetworkNode out -> msg Log
 NetworkLink out -> msg Log
 
+DataSet dataset -> data Network
+/*
 {
   "nodes": [
     {"id": 1, "label": "Node 1"},
@@ -51,6 +56,7 @@ NetworkLink out -> msg Log
     { "from": 2, "to": 5}
   ]
 } -> @data Network
+*/
 {} -> @options Network
 
 NetworkView out          ->     html NetworkViewUpdate

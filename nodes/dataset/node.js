@@ -9,9 +9,15 @@ state.dataset.on('*', function(event, properties, senderId) {
   });
 });
 
-on.input.add    = state.dataset.add;
-on.input.update = state.dataset.update;
-on.input.remove = state.dataset.remove;
+on.input.add = function () {
+  state.dataset.add(data);
+};
+on.input.update = function () {
+  state.dataset.update(data);
+};
+on.input.remove = function () {
+  state.dataset.update(data);
+};
 
 output({
   dataset: state.dataset
