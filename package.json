@@ -11,6 +11,8 @@
   "dependencies": {},
   "devDependencies": {
     "chit": "0.x.x",
+    "chix-flow": "^0.10.7",
+    "chix-monitor-npmlog": "0.0.5",
     "vis": "^3.7.2"
   },
   "engines": {

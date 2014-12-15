@@ -1,4 +1,5 @@
 output = function() {
+  var output = cb;
   var network = new vis.Network(
     input.container,
     input.data,

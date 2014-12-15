@@ -879,7 +879,7 @@
       "title": "Vis Network",
       "ns": "vis",
       "name": "network",
-      "fn": "output = function() {\n  var network = new vis.Network(\n    input.container,\n    input.data,\n    input.options\n  );\n\n  function event(name) {\n    return function(event) {\n      var out = {};\n      out[name] = event;\n      output(out);\n    };\n  }\n\n  [\n   'select','click','doubleClick','hoverNode',\n   'blurNode','resize','dragEnd','startStabilization',\n   'stabilized','viewChanged','zoom'\n  ].forEach(function(eventName) {\n    // TODO: remove these on shutdown or removal.\n    network.on(eventName, event(eventName));\n  });\n\n  output({network: network});\n\n};\n"
+      "fn": "output = function() {\n  var output = cb;\n  var network = new vis.Network(\n    input.container,\n    input.data,\n    input.options\n  );\n\n  function event(name) {\n    return function(event) {\n      var out = {};\n      out[name] = event;\n      output(out);\n    };\n  }\n\n  [\n   'select','click','doubleClick','hoverNode',\n   'blurNode','resize','dragEnd','startStabilization',\n   'stabilized','viewChanged','zoom'\n  ].forEach(function(eventName) {\n    // TODO: remove these on shutdown or removal.\n    network.on(eventName, event(eventName));\n  });\n\n  output({network: network});\n\n};\n"
     }
   ],
   "twigs": []

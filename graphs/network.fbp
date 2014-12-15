@@ -1,0 +1,45 @@
+title: MLK
+
+NetworkView(template/handlebars)
+NetworkViewUpdate(dom/setHtml)
+
+BodyEl(dom/querySelector)
+NetworkEl(dom/querySelector)
+
+Network(vis/network)
+
+Log(console/log)
+
+'./views/network.hb' ~> body NetworkView
+{
+  "title": "VIS FBP"
+} -> vars NetworkView
+
+"body"     -> selector BodyEl
+"#network" -> selector NetworkEl
+
+BodyEl selection -> element NetworkViewUpdate
+NetworkEl selection -> container Network
+
+{
+  "nodes": [
+    {"id": 1, "label": "Node 1"},
+    {"id": 2, "label": "Node 2"},
+    {"id": 3, "label": "Node 3"},
+    {"id": 4, "label": "Node 4"},
+    {"id": 5, "label": "Node 5"}
+  ],
+  "edges": [
+    { "from": 1, "to": 2},
+    { "from": 1, "to": 3},
+    { "from": 2, "to": 4},
+    { "from": 2, "to": 5}
+  ]
+} -> @data Network
+{} -> @options Network
+
+NetworkView out          ->     html NetworkViewUpdate
+
+NetworkViewUpdate element -> :start NetworkEl
+#NetworkViewUpdate element -> :start Network
+#NetworkEl selection     -> stream WebrtcHark
