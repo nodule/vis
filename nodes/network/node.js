@@ -9,7 +9,7 @@ output = function() {
   function event(name) {
     return function(event) {
 
-      if (typeof event !== undefined) {
+      if (undefined !== event) {
         var out = {};
         out[name] = event;
 
