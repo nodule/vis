@@ -11,6 +11,55 @@
     {
       "ports": {
         "input": {
+          "add": {
+            "type": "Object",
+            "title": "Add Node",
+            "description": "Add node to this dataset",
+            "async": true
+          },
+          "update": {
+            "type": "Object",
+            "title": "Update Node",
+            "description": "Update node within dataset",
+            "async": true
+          },
+          "remove": {
+            "type": "any",
+            "title": "Remove Nodes",
+            "description": "Remove node from this dataset",
+            "async": true
+          }
+        },
+        "output": {
+          "dataset": {
+            "type": "DataSet",
+            "title": "DataSet"
+          },
+          "event": {
+            "type": "object",
+            "title": "Event",
+            "description": "Add, update or remove event"
+          }
+        }
+      },
+      "phrases": {
+        "active": "Creating Dataset"
+      },
+      "dependencies": {
+        "npm": {
+          "vis": "3.x.x"
+        }
+      },
+      "description": "Vis Dataset",
+      "title": "Vis Dataset",
+      "async": true,
+      "ns": "vis",
+      "name": "dataset",
+      "fn": "state.dataset = new vis.DataSet(/*TODO: options*/);\n\nstate.dataset.on('*', function(event, properties, senderId) {\n  // output() func available?\n  output({\n    event: event,\n    properties: properties,\n    senderId: senderId\n  });\n});\n\non.input.add    = state.dataset.add;\non.input.update = state.dataset.update;\non.input.remove = state.dataset.remove;\n\noutput({\n  dataset: state.dataset\n});\n"
+    },
+    {
+      "ports": {
+        "input": {
           "container": {
             "type": "Element",
             "title": "Container",

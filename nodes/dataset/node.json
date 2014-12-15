@@ -1,0 +1,48 @@
+{
+  "name": "dataset",
+  "ns": "vis",
+  "async": true,
+  "title": "Vis Dataset",
+  "description": "Vis Dataset",
+  "dependencies": {
+    "npm": {
+      "vis": "3.x.x"
+    }
+  },
+  "phrases": {
+    "active": "Creating Dataset"
+  },
+  "ports": {
+    "input": {
+      "add": {
+        "type": "Object",
+        "title": "Add Node",
+        "description": "Add node to this dataset",
+        "async": true
+      },
+      "update": {
+        "type": "Object",
+        "title": "Update Node",
+        "description": "Update node within dataset",
+        "async": true
+      },
+      "remove": {
+        "type": "any",
+        "title": "Remove Nodes",
+        "description": "Remove node from this dataset",
+        "async": true
+      }
+    },
+    "output": {
+      "dataset": {
+        "type": "DataSet",
+        "title": "DataSet"
+      },
+      "event": {
+        "type": "object",
+        "title": "Event",
+        "description": "Add, update or remove event"
+      }
+    }
+  }
+}

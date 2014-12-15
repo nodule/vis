@@ -7,6 +7,10 @@ BodyEl(dom/querySelector)
 NetworkEl(dom/querySelector)
 
 Network(vis/network)
+Actor(core/actor)
+
+NetworkNode(object/create)
+NetworkLink(object/create)
 
 Log(console/log)
 
@@ -20,6 +24,17 @@ Log(console/log)
 
 BodyEl selection -> element NetworkViewUpdate
 NetworkEl selection -> container Network
+
+'' -> :start Actor
+Actor addNode [id] ->    [id] in NetworkNode
+Actor addNode [id] -> [label] in NetworkNode
+
+Actor addLink [id] ->    [id] in NetworkLink
+
+# I guess this now needs a dataview.
+# which I add nodes to.
+NetworkNode out -> msg Log
+NetworkLink out -> msg Log
 
 {
   "nodes": [

@@ -5,11 +5,7 @@
   <div class="panel-body">
     <div class="container-fluid">
       <div class="row">
-        <div class="col-md-4">
-        </div>
-        <div class="col-md-4">
-        </div>
-        <div class="col-md-4">
+        <div class="col-md-12">
           <div id="network"></div>
         </div>
       </div>
