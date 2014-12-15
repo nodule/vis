@@ -34,17 +34,25 @@ NetworkEl selection -> container Network
 # err ok, must rename also
 #Actor addNode [id] -> [id] add DataSet
 #Actor addNode [id] -> [label] add DataSet
-LinkModel(object/transfer)
-["source.pid","target.pid"] -> @from LinkModel
-["from","to"]               ->   @to LinkModel
+EdgeModel(object/copy)
+NodeModel(object/copy)
+["source.pid","target.pid"] -> @from EdgeModel
+["from","to"]               ->   @to EdgeModel
+
+["pid","title"] -> @from NodeModel
+["id","label"]  ->   @to NodeModel
 
 # ok transfer is the best I can think of.
 
 {"fieldId": "pid"} -> @options NodeDataSet
-Actor addNode -> add NodeDataSet
-Actor addLink -> in LinkModel
+{"fieldId": "pid"} -> @options EdgeDataSet
+Actor addNode -> in NodeModel out -> add NodeDataSet
+Actor addLink -> in EdgeModel out -> add EdgeDataSet
 
-LinkModel out -> add EdgeDataSet
+# weird out has output but EdgeDataSet never receives it.
+# And EdgeDataSet gives output... hmzz.
+NodeDataSet dataset -> msg Log
+EdgeDataSet dataset -> msg Log
 
 #Actor addNode -> msg Log
 
