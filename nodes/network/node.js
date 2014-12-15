@@ -8,9 +8,17 @@ output = function() {
 
   function event(name) {
     return function(event) {
-      var out = {};
-      out[name] = event;
-      output(out);
+
+      if (typeof event !== undefined) {
+        var out = {};
+        out[name] = event;
+
+        output(out);
+      } else {
+        // viewChanged for example..
+        console.log('no output on event:', name);
+      }
+
     };
   }
 
