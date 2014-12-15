@@ -9,9 +9,6 @@ NetworkEl(dom/querySelector)
 Network(vis/network)
 Actor(core/actor)
 
-NetworkNode(object/create)
-NetworkLink(object/create)
-
 NodeDataSet(vis/dataset)
 EdgeDataSet(vis/dataset)
 
