@@ -1,5 +1,19 @@
 state.dataset = new vis.DataSet(/*TODO: options*/);
 
+on.setup = function() {
+
+  state.dataset.on('*', function(event, properties, senderId) {
+    ouput({
+      event: {
+        event: event,
+        properties: properties,
+        senderId: senderId
+      }
+    });
+  });
+
+};
+
 on.input.add = function () {
   state.dataset.add(data);
 };
@@ -10,17 +24,3 @@ on.input.remove = function () {
   state.dataset.update(data);
 };
 
-output = function() {
-
-  state.dataset.on('*', function(event, properties, senderId) {
-    // output() func available?
-    cb({
-      event: {
-        event: event,
-        properties: properties,
-        senderId: senderId
-      }
-    });
-  });
-
-};
