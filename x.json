@@ -55,7 +55,7 @@
       "async": true,
       "ns": "vis",
       "name": "dataset",
-      "fn": "state.dataset = new vis.DataSet(/*TODO: options*/);\n\non.setup = function() {\n\n  state.dataset.on('*', function(event, properties, senderId) {\n    ouput({\n      event: {\n        event: event,\n        properties: properties,\n        senderId: senderId\n      }\n    });\n  });\n\n};\n\non.input.add = function () {\n  state.dataset.add(data);\n};\non.input.update = function () {\n  state.dataset.update(data);\n};\non.input.remove = function () {\n  state.dataset.update(data);\n};\n\n"
+      "fn": "state.dataset = new vis.DataSet(/*TODO: options*/);\n\non.setup = function() {\n  state.dataset.on('*', function(event, properties, senderId) {\n    output({\n      event: {\n        event: event,\n        properties: properties,\n        senderId: senderId\n      }\n    });\n  });\n};\n\non.input.add = function () {\n  state.dataset.add(data);\n};\non.input.update = function () {\n  state.dataset.update(data);\n};\non.input.remove = function () {\n  state.dataset.update(data);\n};\n\n"
     },
     {
       "ports": {

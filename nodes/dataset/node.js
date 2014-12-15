@@ -1,9 +1,8 @@
 state.dataset = new vis.DataSet(/*TODO: options*/);
 
 on.setup = function() {
-
   state.dataset.on('*', function(event, properties, senderId) {
-    ouput({
+    output({
       event: {
         event: event,
         properties: properties,
@@ -11,7 +10,6 @@ on.setup = function() {
       }
     });
   });
-
 };
 
 on.input.add = function () {
