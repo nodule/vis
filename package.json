@@ -1,0 +1,27 @@
+{
+  "name": "nodule-vis",
+  "description": "vis for Chiχ",
+  "author": "Rob Halff <rob.halff@gmail.com>",
+  "version": "0.0.3",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nodule/vis.git"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "chit": "0.x.x",
+    "vis": "^3.7.2"
+  },
+  "engines": {
+    "node": ">=0.6.0"
+  },
+  "main": "x",
+  "scripts": {
+    "test": "chit"
+  },
+  "chix": {
+    "name": "vis",
+    "color": "rgb(230,238,30)"
+  }
+}
