@@ -21,6 +21,6 @@ on.input.remove = function () {
   state.dataset.update(data);
 };
 
-output({
+output = {
   dataset: state.dataset
-});
+};

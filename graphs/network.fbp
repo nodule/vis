@@ -30,15 +30,8 @@ NetworkEl selection -> container Network
 '' -> :start Actor
 # bit trickey node is a reference
 Actor addNode -> add DataSet
-Actor addNode [id] -> [label] in NetworkNode
 
-Actor addLink [id] ->    [id] in NetworkLink
-
-# I guess this now needs a dataview.
-# which I add nodes to.
-NetworkNode out -> msg Log
-NetworkLink out -> msg Log
-
+DataSet dataset -> msg Log
 DataSet dataset -> data Network
 /*
 {
