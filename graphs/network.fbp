@@ -29,9 +29,14 @@ NetworkEl selection -> container Network
 
 '' -> :start Actor
 # bit trickey node is a reference
+
+# err ok, must rename also
+#Actor addNode [id] -> [id] add DataSet
+#Actor addNode [id] -> [label] add DataSet
 Actor addNode -> add DataSet
 
 DataSet dataset -> msg Log
+DataSet event -> msg Log
 DataSet dataset -> data Network
 /*
 {
@@ -50,6 +55,7 @@ DataSet dataset -> data Network
   ]
 } -> @data Network
 */
+
 {} -> @options Network
 
 NetworkView out          ->     html NetworkViewUpdate

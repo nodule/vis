@@ -16,20 +16,20 @@
     "input": {
       "add": {
         "type": "Object",
-        "title": "Add Node",
-        "description": "Add node to this dataset",
+        "title": "Add Item",
+        "description": "Add itemto this dataset",
         "async": true
       },
       "update": {
         "type": "Object",
-        "title": "Update Node",
-        "description": "Update node within dataset",
+        "title": "Update Item",
+        "description": "Update item within dataset",
         "async": true
       },
       "remove": {
         "type": "any",
-        "title": "Remove Nodes",
-        "description": "Remove node from this dataset",
+        "title": "Remove Item",
+        "description": "Remove item from this dataset",
         "async": true
       }
     },
