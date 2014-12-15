@@ -12909,7 +12909,252 @@ module.exports=require('HNG52E');
 exports.Actor = require('./lib/actor');
 exports.Loader = require('./lib/loader');
 
-},{"./lib/actor":47,"./lib/loader":48}],51:[function(require,module,exports){
+},{"./lib/actor":47,"./lib/loader":48}],"C/EKgi":[function(require,module,exports){
+'use strict';
+
+function DotObject(seperator, override) {
+
+  if (!(this instanceof DotObject)) {
+    return new DotObject(seperator, override);
+  }
+
+  if (typeof seperator === 'undefined') { seperator = '.'; }
+  if (typeof override === 'undefined') { override = false; }
+  this.seperator = seperator;
+  this.override = override;
+}
+
+DotObject.prototype._fill = function(a, obj, v, mod) {
+  var k = a.shift();
+
+  if (a.length > 0) {
+    obj[k] = obj[k] || {};
+
+    if (obj[k] !== Object(obj[k])) {
+      if (this.override) {
+        obj[k] = {};
+      } else {
+        throw new Error(
+          'Trying to redefine `' + k + '` which is a ' + typeof obj[k]
+        );
+      }
+    }
+
+    this._fill(a, obj[k], v, mod);
+  } else {
+    if (obj[k] === Object(obj[k]) && Object.keys(obj[k]).length) {
+      throw new Error('Trying to redefine non-empty obj[\'' + k + '\']');
+    }
+
+    obj[k] = this.process(v, mod);
+  }
+};
+
+DotObject.prototype.process = function(v, mod) {
+  var i;
+
+  if (typeof mod === 'function') {
+    v = mod(v);
+  } else if (mod instanceof Array) {
+    for (i = 0; i < mod.length; i++) {
+      v = mod[i](v);
+    }
+  }
+
+  return v;
+};
+
+DotObject.prototype.object = function(obj, mods) {
+  var self = this;
+
+  Object.keys(obj).forEach(function(k) {
+    var mod = mods === undefined ? null : mods[k];
+
+    if (k.indexOf(self.seperator) !== -1) {
+      self._fill(k.split(self.seperator), obj, obj[k], mod);
+      delete obj[k];
+    } else if (self.override) {
+      obj[k] = self.process(obj[k], mod);
+    }
+  });
+};
+
+/**
+ *
+ * @param {String} str
+ * @param {String} v
+ * @param {Object} obj
+ * @param {Function|Array} mod
+ *
+ */
+DotObject.prototype.str = function(str, v, obj, mod) {
+  if (str.indexOf(this.seperator) !== -1) {
+    this._fill(str.split(this.seperator), obj, v, mod);
+  } else if (this.override) {
+    obj[str] = this.process(v, mod);
+  }
+};
+
+/**
+ *
+ * Pick a value from an object using dot notation.
+ *
+ * Optionally remove the value
+ *
+ * @param {String} path
+ * @param {Object} obj
+ * @param {Boolean} remove
+ */
+DotObject.prototype.pick = function(path, obj, remove) {
+  var i;
+  var keys;
+  var val;
+
+  if (path.indexOf(this.seperator) !== -1) {
+    keys = path.split(this.seperator);
+    for (i = 0; i < keys.length; i++) {
+      if (obj.hasOwnProperty(keys[i])) {
+        if (i === (keys.length - 1)) {
+          if (remove) {
+            val = obj[keys[i]];
+            delete obj[keys[i]];
+            return val;
+          } else {
+            return obj[keys[i]];
+          }
+        } else {
+          obj = obj[keys[i]];
+        }
+      } else {
+        return undefined;
+      }
+    }
+    return obj;
+  } else {
+    if (remove) {
+      val = obj[path];
+      delete obj[path];
+      return val;
+    } else {
+      return obj[path];
+    }
+  }
+};
+
+/**
+ *
+ * Move a property from one place to the other.
+ *
+ * If the source path does not exist (undefined)
+ * the target property will not be set.
+ *
+ * @param {String} source
+ * @param {String} target
+ * @param {Object} obj
+ * @param {Boolean} merge
+ *
+ */
+DotObject.prototype.move = function(source, target, obj, merge) {
+
+  this.set(target, this.pick(source, obj, true), obj, merge);
+
+  return obj;
+
+};
+
+/**
+ *
+ * Transfer a property from one object to another object.
+ *
+ * If the source path does not exist (undefined)
+ * the property on the other object will not be set.
+ *
+ * @param {String} source
+ * @param {String} target
+ * @param {Object} obj1
+ * @param {Object} obj2
+ * @param {Boolean} merge
+ */
+DotObject.prototype.transfer = function(source, target, obj1, obj2, merge) {
+
+  this.set(target, this.pick(source, obj1, true), obj2, merge);
+
+  return obj2;
+
+};
+
+function isObject(val) {
+  return Object.prototype.toString.call(val) === '[object Object]';
+}
+
+/**
+ *
+ * Set a property on an object using dot notation.
+ *
+ * @param {String} path
+ * @param {Mixed} val
+ * @param {Object} obj
+ * @param {Boolean} merge
+ */
+DotObject.prototype.set = function(path, val, obj, merge) {
+  var i;
+  var k;
+  var keys;
+  var isArray;
+
+  // Do not operate if the value is undefined.
+  if (typeof val === 'undefined') {
+    return obj;
+  }
+
+  if (path.indexOf(this.seperator) !== -1) {
+    keys = path.split(this.seperator);
+    for (i = 0; i < keys.length; i++) {
+      if (i === (keys.length - 1)) {
+        if (merge && isObject(val) && isObject(obj[keys[i]])) {
+          for (k in val) {
+            if (val.hasOwnProperty(k)) {
+              obj[keys[i]][k] = val[k];
+            }
+          }
+
+        } else if (Array.isArray(obj[keys[i]]) && Array.isArray(val)) {
+          for (var j = 0; j < val.length; j++) {
+            obj[keys[i]].push(val[j]);
+          }
+        } else {
+          obj[keys[i]] = val;
+        }
+      } else if (
+        // force the value to be an object
+        !obj.hasOwnProperty(keys[i]) ||
+        !isObject(obj[keys[i]])) {
+        obj[keys[i]] = {};
+      }
+      obj = obj[keys[i]];
+    }
+    return obj;
+  } else {
+    if (merge && isObject(val)) {
+      for (k in val) {
+        if (val.hasOwnProperty(k)) {
+          obj[path][k] = val[k];
+        }
+      }
+    } else if (Array.isArray(obj[path]) && Array.isArray(val)) {
+      obj[path].push(val);
+    } else {
+      obj[path] = val;
+    }
+    return obj;
+  }
+};
+
+module.exports = DotObject;
+
+},{}],"dot-object":[function(require,module,exports){
+module.exports=require('C/EKgi');
+},{}],53:[function(require,module,exports){
 "use strict";
 /*globals Handlebars: true */
 var Handlebars = require("./handlebars.runtime")["default"];
@@ -12949,7 +13194,7 @@ Handlebars.create = create;
 Handlebars['default'] = Handlebars;
 
 exports["default"] = Handlebars;
-},{"./handlebars.runtime":52,"./handlebars/compiler/ast":54,"./handlebars/compiler/base":55,"./handlebars/compiler/compiler":56,"./handlebars/compiler/javascript-compiler":58}],52:[function(require,module,exports){
+},{"./handlebars.runtime":54,"./handlebars/compiler/ast":56,"./handlebars/compiler/base":57,"./handlebars/compiler/compiler":58,"./handlebars/compiler/javascript-compiler":60}],54:[function(require,module,exports){
 "use strict";
 /*globals Handlebars: true */
 var base = require("./handlebars/base");
@@ -12985,7 +13230,7 @@ Handlebars.create = create;
 Handlebars['default'] = Handlebars;
 
 exports["default"] = Handlebars;
-},{"./handlebars/base":53,"./handlebars/exception":62,"./handlebars/runtime":63,"./handlebars/safe-string":64,"./handlebars/utils":65}],53:[function(require,module,exports){
+},{"./handlebars/base":55,"./handlebars/exception":64,"./handlebars/runtime":65,"./handlebars/safe-string":66,"./handlebars/utils":67}],55:[function(require,module,exports){
 "use strict";
 var Utils = require("./utils");
 var Exception = require("./exception")["default"];
@@ -13217,7 +13462,7 @@ var createFrame = function(object) {
   return frame;
 };
 exports.createFrame = createFrame;
-},{"./exception":62,"./utils":65}],54:[function(require,module,exports){
+},{"./exception":64,"./utils":67}],56:[function(require,module,exports){
 "use strict";
 var Exception = require("../exception")["default"];
 
@@ -13432,7 +13677,7 @@ var AST = {
 // Must be exported as an object rather than the root of the module as the jison lexer
 // most modify the object to operate properly.
 exports["default"] = AST;
-},{"../exception":62}],55:[function(require,module,exports){
+},{"../exception":64}],57:[function(require,module,exports){
 "use strict";
 var parser = require("./parser")["default"];
 var AST = require("./ast")["default"];
@@ -13454,7 +13699,7 @@ function parse(input) {
 }
 
 exports.parse = parse;
-},{"../utils":65,"./ast":54,"./helpers":57,"./parser":59}],56:[function(require,module,exports){
+},{"../utils":67,"./ast":56,"./helpers":59,"./parser":61}],58:[function(require,module,exports){
 "use strict";
 var Exception = require("../exception")["default"];
 var isArray = require("../utils").isArray;
@@ -13907,7 +14152,7 @@ exports.compile = compile;function argEquals(a, b) {
     return true;
   }
 }
-},{"../exception":62,"../utils":65}],57:[function(require,module,exports){
+},{"../exception":64,"../utils":67}],59:[function(require,module,exports){
 "use strict";
 var Exception = require("../exception")["default"];
 
@@ -14095,7 +14340,7 @@ function omitLeft(statements, i, multiple) {
   current.leftStripped = current.string !== original;
   return current.leftStripped;
 }
-},{"../exception":62}],58:[function(require,module,exports){
+},{"../exception":64}],60:[function(require,module,exports){
 "use strict";
 var COMPILER_REVISION = require("../base").COMPILER_REVISION;
 var REVISION_CHANGES = require("../base").REVISION_CHANGES;
@@ -15060,7 +15305,7 @@ JavaScriptCompiler.isValidJavaScriptVariableName = function(name) {
 };
 
 exports["default"] = JavaScriptCompiler;
-},{"../base":53,"../exception":62}],59:[function(require,module,exports){
+},{"../base":55,"../exception":64}],61:[function(require,module,exports){
 "use strict";
 /* jshint ignore:start */
 /* istanbul ignore next */
@@ -15561,7 +15806,7 @@ function Parser () { this.yy = {}; }Parser.prototype = parser;parser.Parser = Pa
 return new Parser;
 })();exports["default"] = handlebars;
 /* jshint ignore:end */
-},{}],60:[function(require,module,exports){
+},{}],62:[function(require,module,exports){
 "use strict";
 var Visitor = require("./visitor")["default"];
 
@@ -15703,7 +15948,7 @@ PrintVisitor.prototype.content = function(content) {
 PrintVisitor.prototype.comment = function(comment) {
   return this.pad("{{! '" + comment.comment + "' }}");
 };
-},{"./visitor":61}],61:[function(require,module,exports){
+},{"./visitor":63}],63:[function(require,module,exports){
 "use strict";
 function Visitor() {}
 
@@ -15716,7 +15961,7 @@ Visitor.prototype = {
 };
 
 exports["default"] = Visitor;
-},{}],62:[function(require,module,exports){
+},{}],64:[function(require,module,exports){
 "use strict";
 
 var errorProps = ['description', 'fileName', 'lineNumber', 'message', 'name', 'number', 'stack'];
@@ -15745,7 +15990,7 @@ function Exception(message, node) {
 Exception.prototype = new Error();
 
 exports["default"] = Exception;
-},{}],63:[function(require,module,exports){
+},{}],65:[function(require,module,exports){
 "use strict";
 var Utils = require("./utils");
 var Exception = require("./exception")["default"];
@@ -15939,7 +16184,7 @@ exports.noop = noop;function initData(context, data) {
   }
   return data;
 }
-},{"./base":53,"./exception":62,"./utils":65}],64:[function(require,module,exports){
+},{"./base":55,"./exception":64,"./utils":67}],66:[function(require,module,exports){
 "use strict";
 // Build out our basic SafeString type
 function SafeString(string) {
@@ -15951,7 +16196,7 @@ SafeString.prototype.toString = function() {
 };
 
 exports["default"] = SafeString;
-},{}],65:[function(require,module,exports){
+},{}],67:[function(require,module,exports){
 "use strict";
 /*jshint -W004 */
 var SafeString = require("./safe-string")["default"];
@@ -16040,7 +16285,7 @@ exports.isEmpty = isEmpty;function appendContextPath(contextPath, id) {
 }
 
 exports.appendContextPath = appendContextPath;
-},{"./safe-string":64}],"handlebars":[function(require,module,exports){
+},{"./safe-string":66}],"handlebars":[function(require,module,exports){
 module.exports=require('7MzhPZ');
 },{}],"7MzhPZ":[function(require,module,exports){
 // USAGE:
@@ -16070,7 +16315,7 @@ if (typeof require !== 'undefined' && require.extensions) {
   require.extensions[".hbs"] = extension;
 }
 
-},{"../dist/cjs/handlebars":51,"../dist/cjs/handlebars/compiler/printer":60,"../dist/cjs/handlebars/compiler/visitor":61,"fs":1}],"29NuJC":[function(require,module,exports){
+},{"../dist/cjs/handlebars":53,"../dist/cjs/handlebars/compiler/printer":62,"../dist/cjs/handlebars/compiler/visitor":63,"fs":1}],"29NuJC":[function(require,module,exports){
 // utils
 exports.util = require('./lib/util');
 exports.DOMutil = require('./lib/DOMutil');
@@ -16145,9 +16390,9 @@ exports.Graph = function () {
 exports.moment = require('./lib/module/moment');
 exports.hammer = require('./lib/module/hammer');
 
-},{"./lib/DOMutil":70,"./lib/DataSet":71,"./lib/DataView":72,"./lib/Queue":73,"./lib/graph3d/Camera":74,"./lib/graph3d/Filter":75,"./lib/graph3d/Graph3d":76,"./lib/graph3d/Point2d":77,"./lib/graph3d/Point3d":78,"./lib/graph3d/Slider":79,"./lib/graph3d/StepNumber":80,"./lib/module/hammer":82,"./lib/module/moment":83,"./lib/network/Edge":84,"./lib/network/Groups":85,"./lib/network/Images":86,"./lib/network/Network":87,"./lib/network/Node":88,"./lib/network/Popup":89,"./lib/network/dotparser":90,"./lib/network/gephiParser":91,"./lib/timeline/DataStep":107,"./lib/timeline/DateUtil":108,"./lib/timeline/Graph2d":109,"./lib/timeline/Range":110,"./lib/timeline/Stack":111,"./lib/timeline/TimeStep":112,"./lib/timeline/Timeline":113,"./lib/timeline/component/BackgroundGroup":114,"./lib/timeline/component/Component":115,"./lib/timeline/component/CurrentTime":116,"./lib/timeline/component/CustomTime":117,"./lib/timeline/component/DataAxis":118,"./lib/timeline/component/GraphGroup":119,"./lib/timeline/component/Group":120,"./lib/timeline/component/ItemSet":121,"./lib/timeline/component/Legend":122,"./lib/timeline/component/LineGraph":123,"./lib/timeline/component/TimeAxis":124,"./lib/timeline/component/item/BackgroundItem":128,"./lib/timeline/component/item/BoxItem":129,"./lib/timeline/component/item/Item":130,"./lib/timeline/component/item/PointItem":131,"./lib/timeline/component/item/RangeItem":132,"./lib/util":134}],"vis":[function(require,module,exports){
+},{"./lib/DOMutil":72,"./lib/DataSet":73,"./lib/DataView":74,"./lib/Queue":75,"./lib/graph3d/Camera":76,"./lib/graph3d/Filter":77,"./lib/graph3d/Graph3d":78,"./lib/graph3d/Point2d":79,"./lib/graph3d/Point3d":80,"./lib/graph3d/Slider":81,"./lib/graph3d/StepNumber":82,"./lib/module/hammer":84,"./lib/module/moment":85,"./lib/network/Edge":86,"./lib/network/Groups":87,"./lib/network/Images":88,"./lib/network/Network":89,"./lib/network/Node":90,"./lib/network/Popup":91,"./lib/network/dotparser":92,"./lib/network/gephiParser":93,"./lib/timeline/DataStep":109,"./lib/timeline/DateUtil":110,"./lib/timeline/Graph2d":111,"./lib/timeline/Range":112,"./lib/timeline/Stack":113,"./lib/timeline/TimeStep":114,"./lib/timeline/Timeline":115,"./lib/timeline/component/BackgroundGroup":116,"./lib/timeline/component/Component":117,"./lib/timeline/component/CurrentTime":118,"./lib/timeline/component/CustomTime":119,"./lib/timeline/component/DataAxis":120,"./lib/timeline/component/GraphGroup":121,"./lib/timeline/component/Group":122,"./lib/timeline/component/ItemSet":123,"./lib/timeline/component/Legend":124,"./lib/timeline/component/LineGraph":125,"./lib/timeline/component/TimeAxis":126,"./lib/timeline/component/item/BackgroundItem":130,"./lib/timeline/component/item/BoxItem":131,"./lib/timeline/component/item/Item":132,"./lib/timeline/component/item/PointItem":133,"./lib/timeline/component/item/RangeItem":134,"./lib/util":136}],"vis":[function(require,module,exports){
 module.exports=require('29NuJC');
-},{}],70:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 // DOM utility methods
 
 /**
@@ -16326,7 +16571,7 @@ exports.drawBar = function (x, y, width, height, className, JSONcontainer, svgCo
     rect.setAttributeNS(null, "class", className);
   }
 };
-},{}],71:[function(require,module,exports){
+},{}],73:[function(require,module,exports){
 var util = require('./util');
 var Queue = require('./Queue');
 
@@ -17317,7 +17562,7 @@ DataSet.prototype._appendRow = function (dataTable, columns, item) {
 
 module.exports = DataSet;
 
-},{"./Queue":73,"./util":134}],72:[function(require,module,exports){
+},{"./Queue":75,"./util":136}],74:[function(require,module,exports){
 var util = require('./util');
 var DataSet = require('./DataSet');
 
@@ -17619,7 +17864,7 @@ DataView.prototype.subscribe = DataView.prototype.on;
 DataView.prototype.unsubscribe = DataView.prototype.off;
 
 module.exports = DataView;
-},{"./DataSet":71,"./util":134}],73:[function(require,module,exports){
+},{"./DataSet":73,"./util":136}],75:[function(require,module,exports){
 /**
  * A queue
  * @param {Object} options
@@ -17821,7 +18066,7 @@ Queue.prototype.flush = function () {
 
 module.exports = Queue;
 
-},{}],74:[function(require,module,exports){
+},{}],76:[function(require,module,exports){
 var Point3d = require('./Point3d');
 
 /**
@@ -17957,7 +18202,7 @@ Camera.prototype.calculateCameraOrientation = function() {
 };
 
 module.exports = Camera;
-},{"./Point3d":78}],75:[function(require,module,exports){
+},{"./Point3d":80}],77:[function(require,module,exports){
 var DataView = require('../DataView');
 
 /**
@@ -18177,7 +18422,7 @@ Filter.prototype.loadInBackground = function(index) {
 
 module.exports = Filter;
 
-},{"../DataView":72}],76:[function(require,module,exports){
+},{"../DataView":74}],78:[function(require,module,exports){
 var Emitter = require('emitter-component');
 var DataSet = require('../DataSet');
 var DataView = require('../DataView');
@@ -20457,7 +20702,7 @@ function getMouseY (event) {
 
 module.exports = Graph3d;
 
-},{"../DataSet":71,"../DataView":72,"../util":134,"./Camera":74,"./Filter":75,"./Point2d":77,"./Point3d":78,"./Slider":79,"./StepNumber":80,"emitter-component":135}],77:[function(require,module,exports){
+},{"../DataSet":73,"../DataView":74,"../util":136,"./Camera":76,"./Filter":77,"./Point2d":79,"./Point3d":80,"./Slider":81,"./StepNumber":82,"emitter-component":137}],79:[function(require,module,exports){
 /**
  * @prototype Point2d
  * @param {Number} [x]
@@ -20470,7 +20715,7 @@ function Point2d (x, y) {
 
 module.exports = Point2d;
 
-},{}],78:[function(require,module,exports){
+},{}],80:[function(require,module,exports){
 /**
  * @prototype Point3d
  * @param {Number} [x]
@@ -20557,7 +20802,7 @@ Point3d.prototype.length = function() {
 
 module.exports = Point3d;
 
-},{}],79:[function(require,module,exports){
+},{}],81:[function(require,module,exports){
 var util = require('../util');
 
 /**
@@ -20905,7 +21150,7 @@ Slider.prototype._onMouseUp = function (event) {
 
 module.exports = Slider;
 
-},{"../util":134}],80:[function(require,module,exports){
+},{"../util":136}],82:[function(require,module,exports){
 /**
  * @prototype StepNumber
  * The class StepNumber is an iterator for Numbers. You provide a start and end
@@ -21047,7 +21292,7 @@ StepNumber.prototype.end = function () {
 
 module.exports = StepNumber;
 
-},{}],81:[function(require,module,exports){
+},{}],83:[function(require,module,exports){
 var Hammer = require('./module/hammer');
 
 /**
@@ -21077,7 +21322,7 @@ exports.fakeGesture = function(element, event) {
   return gesture;
 };
 
-},{"./module/hammer":82}],82:[function(require,module,exports){
+},{"./module/hammer":84}],84:[function(require,module,exports){
 // Only load hammer.js when in a browser environment
 // (loading hammer.js in a node.js environment gives errors)
 if (typeof window !== 'undefined') {
@@ -21089,12 +21334,12 @@ else {
   }
 }
 
-},{"hammerjs":136}],83:[function(require,module,exports){
+},{"hammerjs":138}],85:[function(require,module,exports){
 // first check if moment.js is already loaded in the browser window, if so,
 // use this instance. Else, load via commonjs.
 module.exports = (typeof window !== 'undefined') && window['moment'] || require('moment');
 
-},{"moment":138}],84:[function(require,module,exports){
+},{"moment":140}],86:[function(require,module,exports){
 var util = require('../util');
 var Node = require('./Node');
 
@@ -22301,7 +22546,7 @@ Edge.prototype.getControlNodePositions = function(ctx) {
 };
 
 module.exports = Edge;
-},{"../util":134,"./Node":88}],85:[function(require,module,exports){
+},{"../util":136,"./Node":90}],87:[function(require,module,exports){
 var util = require('../util');
 
 /**
@@ -22386,7 +22631,7 @@ Groups.prototype.add = function (groupname, style) {
 
 module.exports = Groups;
 
-},{"../util":134}],86:[function(require,module,exports){
+},{"../util":136}],88:[function(require,module,exports){
 /**
  * @class Images
  * This class loads images and keeps them stored.
@@ -22440,7 +22685,7 @@ Images.prototype.load = function(url, brokenUrl) {
 
 module.exports = Images;
 
-},{}],87:[function(require,module,exports){
+},{}],89:[function(require,module,exports){
 var Emitter = require('emitter-component');
 var Hammer = require('../module/hammer');
 var keycharm = require('keycharm');
@@ -25032,7 +25277,7 @@ Network.prototype.getCenterCoordinates = function () {
 
 module.exports = Network;
 
-},{"../DataSet":71,"../DataView":72,"../hammerUtil":81,"../module/hammer":82,"../shared/Activator":105,"../util":134,"./Edge":84,"./Groups":85,"./Images":86,"./Node":88,"./Popup":89,"./dotparser":90,"./gephiParser":91,"./locales":92,"./mixins/MixinLoader":96,"./shapes":104,"emitter-component":135,"keycharm":137}],88:[function(require,module,exports){
+},{"../DataSet":73,"../DataView":74,"../hammerUtil":83,"../module/hammer":84,"../shared/Activator":107,"../util":136,"./Edge":86,"./Groups":87,"./Images":88,"./Node":90,"./Popup":91,"./dotparser":92,"./gephiParser":93,"./locales":94,"./mixins/MixinLoader":98,"./shapes":106,"emitter-component":137,"keycharm":139}],90:[function(require,module,exports){
 var util = require('../util');
 
 /**
@@ -26052,7 +26297,7 @@ Node.prototype.updateVelocity = function(massBeforeClustering) {
 
 module.exports = Node;
 
-},{"../util":134}],89:[function(require,module,exports){
+},{"../util":136}],91:[function(require,module,exports){
 /**
  * Popup is a class to create a popup window with some text
  * @param {Element}  container     The container object.
@@ -26194,7 +26439,7 @@ Popup.prototype.hide = function () {
 
 module.exports = Popup;
 
-},{}],90:[function(require,module,exports){
+},{}],92:[function(require,module,exports){
 /**
  * Parse a text source containing data in DOT language into a JSON object.
  * The object contains two lists: one with nodes and one with edges.
@@ -27022,7 +27267,7 @@ function DOTToGraph (data) {
 exports.parseDOT = parseDOT;
 exports.DOTToGraph = DOTToGraph;
 
-},{}],91:[function(require,module,exports){
+},{}],93:[function(require,module,exports){
 
 function parseGephi(gephiJSON, options) {
   var edges = [];
@@ -27083,7 +27328,7 @@ function parseGephi(gephiJSON, options) {
 }
 
 exports.parseGephi = parseGephi;
-},{}],92:[function(require,module,exports){
+},{}],94:[function(require,module,exports){
 // English
 exports['en'] = {
   edit: 'Edit',
@@ -27120,7 +27365,7 @@ exports['nl'] = {
 exports['nl_NL'] = exports['nl'];
 exports['nl_BE'] = exports['nl'];
 
-},{}],93:[function(require,module,exports){
+},{}],95:[function(require,module,exports){
 /**
  * Creation of the ClusterMixin var.
  *
@@ -28259,7 +28504,7 @@ exports._getChainFraction = function() {
   return chains/total;
 };
 
-},{}],94:[function(require,module,exports){
+},{}],96:[function(require,module,exports){
 exports._resetLevels = function() {
   for (var nodeId in this.nodes) {
     if (this.nodes.hasOwnProperty(nodeId)) {
@@ -28672,7 +28917,7 @@ exports._restoreNodes = function() {
   }
 };
 
-},{}],95:[function(require,module,exports){
+},{}],97:[function(require,module,exports){
 var util = require('../../util');
 var Node = require('../Node');
 var Edge = require('../Edge');
@@ -29354,7 +29599,7 @@ exports._deleteSelected = function() {
   }
 };
 
-},{"../../util":134,"../Edge":84,"../Node":88}],96:[function(require,module,exports){
+},{"../../util":136,"../Edge":86,"../Node":90}],98:[function(require,module,exports){
 var PhysicsMixin = require('./physics/PhysicsMixin');
 var ClusterMixin = require('./ClusterMixin');
 var SectorsMixin = require('./SectorsMixin');
@@ -29551,7 +29796,7 @@ exports._loadHierarchySystem = function () {
   this._loadMixin(HierarchicalLayoutMixin);
 };
 
-},{"./ClusterMixin":93,"./HierarchicalLayoutMixin":94,"./ManipulationMixin":95,"./NavigationMixin":97,"./SectorsMixin":98,"./SelectionMixin":99,"./physics/PhysicsMixin":102}],97:[function(require,module,exports){
+},{"./ClusterMixin":95,"./HierarchicalLayoutMixin":96,"./ManipulationMixin":97,"./NavigationMixin":99,"./SectorsMixin":100,"./SelectionMixin":101,"./physics/PhysicsMixin":104}],99:[function(require,module,exports){
 var util = require('../../util');
 var Hammer = require('../../module/hammer');
 
@@ -29727,7 +29972,7 @@ exports._xStopMoving = function(event) {
   event && event.preventDefault();
 };
 
-},{"../../module/hammer":82,"../../util":134}],98:[function(require,module,exports){
+},{"../../module/hammer":84,"../../util":136}],100:[function(require,module,exports){
 var util = require('../../util');
 var Node = require('../Node');
 
@@ -30282,7 +30527,7 @@ exports._drawAllSectorNodes = function(ctx) {
   this._loadLatestSector();
 };
 
-},{"../../util":134,"../Node":88}],99:[function(require,module,exports){
+},{"../../util":136,"../Node":90}],101:[function(require,module,exports){
 var Node = require('../Node');
 
 /**
@@ -30992,7 +31237,7 @@ exports._updateSelection = function () {
   }
 };
 
-},{"../Node":88}],100:[function(require,module,exports){
+},{"../Node":90}],102:[function(require,module,exports){
 /**
  * This function calculates the forces the nodes apply on eachother based on a gravitational model.
  * The Barnes Hut method is used to speed up this N-body simulation.
@@ -31393,7 +31638,7 @@ exports._drawBranch = function(branch,ctx,color) {
    */
 };
 
-},{}],101:[function(require,module,exports){
+},{}],103:[function(require,module,exports){
 /**
  * Calculate the forces the nodes apply on eachother based on a repulsion field.
  * This field is linearly approximated.
@@ -31548,7 +31793,7 @@ exports._calculateHierarchicalSpringForces = function () {
   }
 
 };
-},{}],102:[function(require,module,exports){
+},{}],104:[function(require,module,exports){
 var util = require('../../../util');
 var RepulsionMixin = require('./RepulsionMixin');
 var HierarchialRepulsionMixin = require('./HierarchialRepulsionMixin');
@@ -32258,7 +32503,7 @@ function showValueOfRange (id,map,constantsVariableName) {
   this.start();
 }
 
-},{"../../../util":134,"./BarnesHutMixin":100,"./HierarchialRepulsionMixin":101,"./RepulsionMixin":103}],103:[function(require,module,exports){
+},{"../../../util":136,"./BarnesHutMixin":102,"./HierarchialRepulsionMixin":103,"./RepulsionMixin":105}],105:[function(require,module,exports){
 /**
  * Calculate the forces the nodes apply on each other based on a repulsion field.
  * This field is linearly approximated.
@@ -32318,7 +32563,7 @@ exports._calculateNodeForces = function () {
   }
 };
 
-},{}],104:[function(require,module,exports){
+},{}],106:[function(require,module,exports){
 /**
  * Canvas shapes used by Network
  */
@@ -32545,7 +32790,7 @@ if (typeof CanvasRenderingContext2D !== 'undefined') {
   // TODO: add diamond shape
 }
 
-},{}],105:[function(require,module,exports){
+},{}],107:[function(require,module,exports){
 var keycharm = require('keycharm');
 var Emitter = require('emitter-component');
 var Hammer = require('../module/hammer');
@@ -32698,7 +32943,7 @@ function _hasParent(element, parent) {
 
 module.exports = Activator;
 
-},{"../module/hammer":82,"../util":134,"emitter-component":135,"keycharm":137}],106:[function(require,module,exports){
+},{"../module/hammer":84,"../util":136,"emitter-component":137,"keycharm":139}],108:[function(require,module,exports){
 var Emitter = require('emitter-component');
 var Hammer = require('../module/hammer');
 var util = require('../util');
@@ -33570,7 +33815,7 @@ Core.prototype._getScrollTop = function () {
 
 module.exports = Core;
 
-},{"../DataSet":71,"../DataView":72,"../module/hammer":82,"../shared/Activator":105,"../util":134,"./DateUtil":108,"./Range":110,"./component/ItemSet":121,"emitter-component":135}],107:[function(require,module,exports){
+},{"../DataSet":73,"../DataView":74,"../module/hammer":84,"../shared/Activator":107,"../util":136,"./DateUtil":110,"./Range":112,"./component/ItemSet":123,"emitter-component":137}],109:[function(require,module,exports){
 /**
  * @constructor  DataStep
  * The class DataStep is an iterator for data for the lineGraph. You provide a start data point and an
@@ -33844,7 +34089,7 @@ DataStep.prototype.isMajor = function() {
 
 module.exports = DataStep;
 
-},{}],108:[function(require,module,exports){
+},{}],110:[function(require,module,exports){
 /**
  * Created by Alex on 10/3/2014.
  */
@@ -34310,7 +34555,7 @@ exports.isHidden = function(time, hiddenDates) {
   }
   return {hidden: false, startDate: startDate, endDate: endDate};
 }
-},{"../module/moment":83}],109:[function(require,module,exports){
+},{"../module/moment":85}],111:[function(require,module,exports){
 var Emitter = require('emitter-component');
 var Hammer = require('../module/hammer');
 var util = require('../util');
@@ -34556,7 +34801,7 @@ Graph2d.prototype.getItemRange = function() {
 
 module.exports = Graph2d;
 
-},{"../DataSet":71,"../DataView":72,"../module/hammer":82,"../util":134,"./Core":106,"./Range":110,"./component/CurrentTime":116,"./component/CustomTime":117,"./component/LineGraph":123,"./component/TimeAxis":124,"emitter-component":135}],110:[function(require,module,exports){
+},{"../DataSet":73,"../DataView":74,"../module/hammer":84,"../util":136,"./Core":108,"./Range":112,"./component/CurrentTime":118,"./component/CustomTime":119,"./component/LineGraph":125,"./component/TimeAxis":126,"emitter-component":137}],112:[function(require,module,exports){
 var util = require('../util');
 var hammerUtil = require('../hammerUtil');
 var moment = require('../module/moment');
@@ -35234,7 +35479,7 @@ Range.prototype.moveTo = function(moveTo) {
 
 module.exports = Range;
 
-},{"../hammerUtil":81,"../module/moment":83,"../util":134,"./DateUtil":108,"./component/Component":115}],111:[function(require,module,exports){
+},{"../hammerUtil":83,"../module/moment":85,"../util":136,"./DateUtil":110,"./component/Component":117}],113:[function(require,module,exports){
 // Utility functions for ordering and stacking of items
 var EPSILON = 0.001; // used when checking collisions, to prevent round-off errors
 
@@ -35358,7 +35603,7 @@ exports.collision = function(a, b, margin) {
       (a.top + a.height + margin.vertical - EPSILON)   > b.top);
 };
 
-},{}],112:[function(require,module,exports){
+},{}],114:[function(require,module,exports){
 var moment = require('../module/moment');
 var DateUtil = require('./DateUtil');
 
@@ -35886,7 +36131,7 @@ TimeStep.prototype.getLabelMajor = function(date) {
 
 module.exports = TimeStep;
 
-},{"../module/moment":83,"./DateUtil":108}],113:[function(require,module,exports){
+},{"../module/moment":85,"./DateUtil":110}],115:[function(require,module,exports){
 var Emitter = require('emitter-component');
 var Hammer = require('../module/hammer');
 var util = require('../util');
@@ -36202,7 +36447,7 @@ Timeline.prototype.getItemRange = function() {
 
 module.exports = Timeline;
 
-},{"../DataSet":71,"../DataView":72,"../module/hammer":82,"../util":134,"./Core":106,"./Range":110,"./component/CurrentTime":116,"./component/CustomTime":117,"./component/ItemSet":121,"./component/TimeAxis":124,"emitter-component":135}],114:[function(require,module,exports){
+},{"../DataSet":73,"../DataView":74,"../module/hammer":84,"../util":136,"./Core":108,"./Range":112,"./component/CurrentTime":118,"./component/CustomTime":119,"./component/ItemSet":123,"./component/TimeAxis":126,"emitter-component":137}],116:[function(require,module,exports){
 var util = require('../../util');
 var Group = require('./Group');
 
@@ -36261,7 +36506,7 @@ BackgroundGroup.prototype.show = function() {
 
 module.exports = BackgroundGroup;
 
-},{"../../util":134,"./Group":120}],115:[function(require,module,exports){
+},{"../../util":136,"./Group":122}],117:[function(require,module,exports){
 /**
  * Prototype for visual components
  * @param {{dom: Object, domProps: Object, emitter: Emitter, range: Range}} [body]
@@ -36317,7 +36562,7 @@ Component.prototype._isResized = function() {
 
 module.exports = Component;
 
-},{}],116:[function(require,module,exports){
+},{}],118:[function(require,module,exports){
 var util = require('../../util');
 var Component = require('./Component');
 var moment = require('../../module/moment');
@@ -36482,7 +36727,7 @@ CurrentTime.prototype.getCurrentTime = function() {
 
 module.exports = CurrentTime;
 
-},{"../../module/moment":83,"../../util":134,"../locales":133,"./Component":115}],117:[function(require,module,exports){
+},{"../../module/moment":85,"../../util":136,"../locales":135,"./Component":117}],119:[function(require,module,exports){
 var Hammer = require('../../module/hammer');
 var util = require('../../util');
 var Component = require('./Component');
@@ -36680,7 +36925,7 @@ CustomTime.prototype._onDragEnd = function (event) {
 
 module.exports = CustomTime;
 
-},{"../../module/hammer":82,"../../module/moment":83,"../../util":134,"../locales":133,"./Component":115}],118:[function(require,module,exports){
+},{"../../module/hammer":84,"../../module/moment":85,"../../util":136,"../locales":135,"./Component":117}],120:[function(require,module,exports){
 var util = require('../../util');
 var DOMutil = require('../../DOMutil');
 var Component = require('./Component');
@@ -37312,7 +37557,7 @@ DataAxis.prototype.snap = function(date) {
 
 module.exports = DataAxis;
 
-},{"../../DOMutil":70,"../../util":134,"../DataStep":107,"./Component":115}],119:[function(require,module,exports){
+},{"../../DOMutil":72,"../../util":136,"../DataStep":109,"./Component":117}],121:[function(require,module,exports){
 var util = require('../../util');
 var DOMutil = require('../../DOMutil');
 var Line = require('./graph2d_types/line');
@@ -37513,7 +37758,7 @@ GraphGroup.prototype.draw = function(dataset, group, framework) {
 
 module.exports = GraphGroup;
 
-},{"../../DOMutil":70,"../../util":134,"./graph2d_types/bar":125,"./graph2d_types/line":126,"./graph2d_types/points":127}],120:[function(require,module,exports){
+},{"../../DOMutil":72,"../../util":136,"./graph2d_types/bar":127,"./graph2d_types/line":128,"./graph2d_types/points":129}],122:[function(require,module,exports){
 var util = require('../../util');
 var stack = require('../Stack');
 var RangeItem = require('./item/RangeItem');
@@ -38084,7 +38329,7 @@ Group.prototype._checkIfVisibleWithReference = function(item, visibleItems, visi
 
 module.exports = Group;
 
-},{"../../util":134,"../Stack":111,"./item/RangeItem":132}],121:[function(require,module,exports){
+},{"../../util":136,"../Stack":113,"./item/RangeItem":134}],123:[function(require,module,exports){
 var Hammer = require('../../module/hammer');
 var util = require('../../util');
 var DataSet = require('../../DataSet');
@@ -39618,7 +39863,7 @@ ItemSet.itemSetFromTarget = function(event) {
 
 module.exports = ItemSet;
 
-},{"../../DataSet":71,"../../DataView":72,"../../module/hammer":82,"../../util":134,"./BackgroundGroup":114,"./Component":115,"./Group":120,"./item/BackgroundItem":128,"./item/BoxItem":129,"./item/PointItem":131,"./item/RangeItem":132}],122:[function(require,module,exports){
+},{"../../DataSet":73,"../../DataView":74,"../../module/hammer":84,"../../util":136,"./BackgroundGroup":116,"./Component":117,"./Group":122,"./item/BackgroundItem":130,"./item/BoxItem":131,"./item/PointItem":133,"./item/RangeItem":134}],124:[function(require,module,exports){
 var util = require('../../util');
 var DOMutil = require('../../DOMutil');
 var Component = require('./Component');
@@ -39824,7 +40069,7 @@ Legend.prototype.drawLegendIcons = function() {
 
 module.exports = Legend;
 
-},{"../../DOMutil":70,"../../util":134,"./Component":115}],123:[function(require,module,exports){
+},{"../../DOMutil":72,"../../util":136,"./Component":117}],125:[function(require,module,exports){
 var util = require('../../util');
 var DOMutil = require('../../DOMutil');
 var DataSet = require('../../DataSet');
@@ -40811,7 +41056,7 @@ LineGraph.prototype._convertYcoordinates = function (datapoints, group) {
 
 module.exports = LineGraph;
 
-},{"../../DOMutil":70,"../../DataSet":71,"../../DataView":72,"../../util":134,"./Component":115,"./DataAxis":118,"./GraphGroup":119,"./Legend":122,"./graph2d_types/bar":125}],124:[function(require,module,exports){
+},{"../../DOMutil":72,"../../DataSet":73,"../../DataView":74,"../../util":136,"./Component":117,"./DataAxis":120,"./GraphGroup":121,"./Legend":124,"./graph2d_types/bar":127}],126:[function(require,module,exports){
 var util = require('../../util');
 var Component = require('./Component');
 var TimeStep = require('../TimeStep');
@@ -41226,7 +41471,7 @@ TimeAxis.prototype.snap = function(date) {
 
 module.exports = TimeAxis;
 
-},{"../../module/moment":83,"../../util":134,"../DateUtil":108,"../TimeStep":112,"./Component":115}],125:[function(require,module,exports){
+},{"../../module/moment":85,"../../util":136,"../DateUtil":110,"../TimeStep":114,"./Component":117}],127:[function(require,module,exports){
 /**
  * Created by Alex on 11/11/2014.
  */
@@ -41456,7 +41701,7 @@ Bargraph._getStackedBarYRange = function (intersections, combinedData) {
 };
 
 module.exports = Bargraph;
-},{"../../../DOMutil":70,"./points":127}],126:[function(require,module,exports){
+},{"../../../DOMutil":72,"./points":129}],128:[function(require,module,exports){
 /**
  * Created by Alex on 11/11/2014.
  */
@@ -41676,7 +41921,7 @@ Line._linear = function(data) {
 
 module.exports = Line;
 
-},{"../../../DOMutil":70,"./points":127}],127:[function(require,module,exports){
+},{"../../../DOMutil":72,"./points":129}],129:[function(require,module,exports){
 /**
  * Created by Alex on 11/11/2014.
  */
@@ -41720,7 +41965,7 @@ Points.draw = function (dataset, group, framework, offset) {
 
 
 module.exports = Points;
-},{"../../../DOMutil":70}],128:[function(require,module,exports){
+},{"../../../DOMutil":72}],130:[function(require,module,exports){
 var Hammer = require('../../../module/hammer');
 var Item = require('./Item');
 var BackgroundGroup = require('../BackgroundGroup');
@@ -41930,7 +42175,7 @@ BackgroundItem.prototype.repositionY = function(margin) {
 
 module.exports = BackgroundItem;
 
-},{"../../../module/hammer":82,"../BackgroundGroup":114,"./Item":130,"./RangeItem":132}],129:[function(require,module,exports){
+},{"../../../module/hammer":84,"../BackgroundGroup":116,"./Item":132,"./RangeItem":134}],131:[function(require,module,exports){
 var Item = require('./Item');
 var util = require('../../../util');
 
@@ -42156,7 +42401,7 @@ BoxItem.prototype.repositionY = function() {
 
 module.exports = BoxItem;
 
-},{"../../../util":134,"./Item":130}],130:[function(require,module,exports){
+},{"../../../util":136,"./Item":132}],132:[function(require,module,exports){
 var Hammer = require('../../../module/hammer');
 var util = require('../../../util');
 
@@ -42417,7 +42662,7 @@ Item.prototype._updateStyle = function(element) {
 
 module.exports = Item;
 
-},{"../../../module/hammer":82,"../../../util":134}],131:[function(require,module,exports){
+},{"../../../module/hammer":84,"../../../util":136}],133:[function(require,module,exports){
 var Item = require('./Item');
 
 /**
@@ -42602,7 +42847,7 @@ PointItem.prototype.repositionY = function() {
 
 module.exports = PointItem;
 
-},{"./Item":130}],132:[function(require,module,exports){
+},{"./Item":132}],134:[function(require,module,exports){
 var Hammer = require('../../../module/hammer');
 var Item = require('./Item');
 
@@ -42905,7 +43150,7 @@ RangeItem.prototype._repaintDragRight = function () {
 
 module.exports = RangeItem;
 
-},{"../../../module/hammer":82,"./Item":130}],133:[function(require,module,exports){
+},{"../../../module/hammer":84,"./Item":132}],135:[function(require,module,exports){
 // English
 exports['en'] = {
   current: 'current',
@@ -42922,7 +43167,7 @@ exports['nl'] = {
 exports['nl_NL'] = exports['nl'];
 exports['nl_BE'] = exports['nl'];
 
-},{}],134:[function(require,module,exports){
+},{}],136:[function(require,module,exports){
 // utility functions
 
 // first check if moment.js is already loaded in the browser window, if so,
@@ -44202,7 +44447,7 @@ exports.easingFunctions = {
     return t < .5 ? 16 * t * t * t * t * t : 1 + 16 * (--t) * t * t * t * t
   }
 };
-},{"./module/moment":83}],135:[function(require,module,exports){
+},{"./module/moment":85}],137:[function(require,module,exports){
 
 /**
  * Expose `Emitter`.
@@ -44368,7 +44613,7 @@ Emitter.prototype.hasListeners = function(event){
   return !! this.listeners(event).length;
 };
 
-},{}],136:[function(require,module,exports){
+},{}],138:[function(require,module,exports){
 /*! Hammer.JS - v1.1.3 - 2014-05-20
  * http://eightmedia.github.io/hammer.js
  *
@@ -46531,7 +46776,7 @@ if(typeof define == 'function' && define.amd) {
 }
 
 })(window);
-},{}],137:[function(require,module,exports){
+},{}],139:[function(require,module,exports){
 "use strict";
 /**
  * Created by Alex on 11/6/2014.
@@ -46724,7 +46969,7 @@ if(typeof define == 'function' && define.amd) {
 
 
 
-},{}],138:[function(require,module,exports){
+},{}],140:[function(require,module,exports){
 (function (global){
 //! moment.js
 //! version : 2.8.4
@@ -49664,15 +49909,13 @@ if(typeof define == 'function' && define.amd) {
 }).call(this);
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],"network":[function(require,module,exports){
-module.exports=require('keAs0r');
 },{}],"keAs0r":[function(require,module,exports){
 var Loader = function() {
 
   // will be replaced with the json.
-  this.dependencies = {"npm":{"handlebars":"latest","vis":"3.x.x","chix-flow":"0.x.x"}};
+  this.dependencies = {"npm":{"handlebars":"latest","vis":"3.x.x","chix-flow":"0.x.x","dot-object":"0.x.x"}};
   //this.nodes = ;
-  this.nodeDefinitions = {"https://serve-chix.rhcloud.com/nodes/{ns}/{name}":{"template":{"handlebars":{"_id":"52ea878d1905561c7aa3bdbc","name":"handlebars","ns":"template","description":"Handlebars Template engine","phrases":{"active":"Compiling handlebars template"},"ports":{"input":{"body":{"type":"string","format":"html","title":"Template body","description":"The body of the handlebars template","required":true},"vars":{"type":"object","title":"Input variables","description":"the input variables for this template","default":{}},"handlebars":{"type":"function","title":"Handlebars","default":null}},"output":{"out":{"title":"HTML","type":"string"}}},"dependencies":{"npm":{"handlebars":"latest"}},"fn":"var hb = input.handlebars || handlebars;\nvar tpl = hb.compile(input.body);\noutput = {\n  out: tpl(input.vars)\n}\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}},"dom":{"setHtml":{"_id":"52be32d46a14bb6fbd924a24","name":"setHtml","ns":"dom","description":"dom setHtml","async":true,"phrases":{"active":"Adding html"},"ports":{"input":{"element":{"type":"HTMLElement","title":"Dom Element"},"html":{"type":"string","format":"html","title":"html","async":true}},"output":{"element":{"type":"HTMLElement","title":"Dom Element"}}},"fn":"on.input.html = function(data) {\n  input.element.innerHTML = data;\n  output({ element: input.element });\n};\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"},"querySelector":{"_id":"527299bb30b8af4b8910216b","name":"querySelector","ns":"dom","title":"querySelector","description":"[Document query selector](https://developer.mozilla.org/en-US/docs/Web/API/document.querySelector)","expose":["document"],"phrases":{"active":"Gathering elements matching criteria: {{input.selector}}"},"ports":{"input":{"element":{"title":"Element","type":"HTMLElement","default":null},"selector":{"title":"Selector","type":"string"}},"output":{"element":{"title":"Element","type":"HTMLElement"},"selection":{"title":"Selection","type":"HTMLElement"},"error":{"title":"Error","type":"Error"}}},"fn":"var el = input.element ? input.element : document;\noutput = {\n  element: el\n};\n\nvar selection = el.querySelector(input.selector);\nif(selection) {\n  output.selection = selection;\n} else {\n  output.error = Error('Selector ' + input.selector + ' did not match');\n}\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}},"vis":{"network":{"_id":"548e270f0e9c46154a015c89","name":"network","ns":"vis","title":"Vis Network","description":"Create a network visualization, displaying nodes and edges.","dependencies":{"npm":{"vis":"3.x.x"}},"phrases":{"active":"Creating Vis network"},"ports":{"input":{"container":{"type":"Element","title":"Container","description":"The DOM element in which the Network will be created. Normally a div element."},"data":{"type":"object","title":"Data","description":"An object containing parameters {Array} nodes\n{Array} edges","properties":{"nodes":{"title":"Nodes","type":"array","default":[]},"edges":{"title":"Edges","type":"array","default":[]},"dot":{"title":"String","type":"string","required":false}}},"options":{"type":"object","title":"Options","description":"Options","properties":{"nodes":{"type":"object","properties":{"mass":{"type":"number","title":"Mass","default":1},"radiusMin":{"type":"number","title":"RadiusMin","default":10},"radiusMax":{"type":"number","title":"RadiusMax","default":30},"radius":{"type":"number","title":"Radius","default":10},"shape":{"type":"string","title":"Shape","default":"ellipse"},"widthMin":{"type":"number","title":"WidthMin","default":16},"widthMax":{"type":"number","title":"WidthMax","default":64},"fontColor":{"type":"string","title":"FontColor","default":"black"},"fontSize":{"type":"number","title":"FontSize","default":14},"fontFace":{"type":"string","title":"FontFace","default":"verdana"},"level":{"type":"number","title":"Level","default":-1},"color":{"type":"object","properties":{"border":{"type":"string","title":"Border","default":"#2B7CE9"},"background":{"type":"string","title":"Background","default":"#97C2FC"},"highlight":{"type":"object","properties":{"border":{"type":"string","title":"Border","default":"#2B7CE9"},"background":{"type":"string","title":"Background","default":"#D2E5FF"}}},"hover":{"type":"object","properties":{"border":{"type":"string","title":"Border","default":"#2B7CE9"},"background":{"type":"string","title":"Background","default":"#D2E5FF"}}}}},"borderColor":{"type":"string","title":"BorderColor","default":"#2B7CE9"},"backgroundColor":{"type":"string","title":"BackgroundColor","default":"#97C2FC"},"highlightColor":{"type":"string","title":"HighlightColor","default":"#D2E5FF"},"borderWidth":{"type":"number","title":"BorderWidth","default":1}}},"edges":{"type":"object","properties":{"widthMin":{"type":"number","title":"WidthMin","default":1},"widthMax":{"type":"number","title":"WidthMax","default":15},"width":{"type":"number","title":"Width","default":1},"widthSelectionMultiplier":{"type":"number","title":"WidthSelectionMultiplier","default":2},"hoverWidth":{"type":"number","title":"HoverWidth","default":1.5},"style":{"type":"string","title":"Style","default":"line"},"color":{"type":"object","properties":{"color":{"type":"string","title":"Color","default":"#848484"},"highlight":{"type":"string","title":"Highlight","default":"#848484"},"hover":{"type":"string","title":"Hover","default":"#848484"}}},"fontColor":{"type":"string","title":"FontColor","default":"#343434"},"fontSize":{"type":"number","title":"FontSize","default":14},"fontFace":{"type":"string","title":"FontFace","default":"arial"},"fontFill":{"type":"string","title":"FontFill","default":"white"},"arrowScaleFactor":{"type":"number","title":"ArrowScaleFactor","default":1},"dash":{"type":"object","properties":{"length":{"type":"number","title":"Length","default":10},"gap":{"type":"number","title":"Gap","default":5}}},"inheritColor":{"type":"string","title":"InheritColor","default":"from"}}},"configurePhysics":{"type":"boolean","title":"ConfigurePhysics","default":false},"physics":{"type":"object","properties":{"barnesHut":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":true},"theta":{"type":"number","title":"Theta","default":1.6666666666666667},"gravitationalConstant":{"type":"number","title":"GravitationalConstant","default":-2000},"centralGravity":{"type":"number","title":"CentralGravity","default":0.3},"springLength":{"type":"number","title":"SpringLength","default":95},"springConstant":{"type":"number","title":"SpringConstant","default":0.04},"damping":{"type":"number","title":"Damping","default":0.09}}},"repulsion":{"type":"object","properties":{"centralGravity":{"type":"number","title":"CentralGravity","default":0},"springLength":{"type":"number","title":"SpringLength","default":200},"springConstant":{"type":"number","title":"SpringConstant","default":0.05},"nodeDistance":{"type":"number","title":"NodeDistance","default":100},"damping":{"type":"number","title":"Damping","default":0.09}}},"hierarchicalRepulsion":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":false},"centralGravity":{"type":"number","title":"CentralGravity","default":0},"springLength":{"type":"number","title":"SpringLength","default":100},"springConstant":{"type":"number","title":"SpringConstant","default":0.01},"nodeDistance":{"type":"number","title":"NodeDistance","default":150},"damping":{"type":"number","title":"Damping","default":0.09}}},"damping":{"type":"null","title":"Damping","default":null},"centralGravity":{"type":"null","title":"CentralGravity","default":null},"springLength":{"type":"null","title":"SpringLength","default":null},"springConstant":{"type":"null","title":"SpringConstant","default":null}}},"clustering":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":false},"initialMaxNodes":{"type":"number","title":"InitialMaxNodes","default":100},"clusterThreshold":{"type":"number","title":"ClusterThreshold","default":500},"reduceToNodes":{"type":"number","title":"ReduceToNodes","default":300},"chainThreshold":{"type":"number","title":"ChainThreshold","default":0.4},"clusterEdgeThreshold":{"type":"number","title":"ClusterEdgeThreshold","default":20},"sectorThreshold":{"type":"number","title":"SectorThreshold","default":100},"screenSizeThreshold":{"type":"number","title":"ScreenSizeThreshold","default":0.2},"fontSizeMultiplier":{"type":"number","title":"FontSizeMultiplier","default":4},"maxFontSize":{"type":"number","title":"MaxFontSize","default":1000},"forceAmplification":{"type":"number","title":"ForceAmplification","default":0.1},"distanceAmplification":{"type":"number","title":"DistanceAmplification","default":0.1},"edgeGrowth":{"type":"number","title":"EdgeGrowth","default":20},"nodeScaling":{"type":"object","properties":{"width":{"type":"number","title":"Width","default":1},"height":{"type":"number","title":"Height","default":1},"radius":{"type":"number","title":"Radius","default":1}}},"maxNodeSizeIncrements":{"type":"number","title":"MaxNodeSizeIncrements","default":600},"activeAreaBoxSize":{"type":"number","title":"ActiveAreaBoxSize","default":80},"clusterLevelDifference":{"type":"number","title":"ClusterLevelDifference","default":2}}},"navigation":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":false}}},"keyboard":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":false},"speed":{"type":"object","properties":{"x":{"type":"number","title":"X","default":10},"y":{"type":"number","title":"Y","default":10},"zoom":{"type":"number","title":"Zoom","default":0.02}}}}},"dataManipulation":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":false},"initiallyVisible":{"type":"boolean","title":"InitiallyVisible","default":false}}},"hierarchicalLayout":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":false},"levelSeparation":{"type":"number","title":"LevelSeparation","default":150},"nodeSpacing":{"type":"number","title":"NodeSpacing","default":100},"direction":{"type":"string","title":"Direction","default":"UD"},"layout":{"type":"string","title":"Layout","default":"hubsize"}}},"freezeForStabilization":{"type":"boolean","title":"FreezeForStabilization","default":false},"smoothCurves":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":true},"dynamic":{"type":"boolean","title":"Dynamic","default":true},"type":{"type":"string","title":"Type","default":"continuous"},"roundness":{"type":"number","title":"Roundness","default":0.5}}},"maxVelocity":{"type":"number","title":"MaxVelocity","default":30},"minVelocity":{"type":"number","title":"MinVelocity","default":0.1},"stabilize":{"type":"boolean","title":"Stabilize","default":true},"stabilizationIterations":{"type":"number","title":"StabilizationIterations","default":1000},"locale":{"type":"string","title":"Locale","enum":["en","en_EN","enUS","nl","nl_NL","nl_BE"],"default":"en"},"tooltip":{"type":"object","properties":{"delay":{"type":"number","title":"Delay","default":300},"fontColor":{"type":"string","title":"FontColor","default":"black"},"fontSize":{"type":"number","title":"FontSize","default":14},"fontFace":{"type":"string","title":"FontFace","default":"verdana"},"color":{"type":"object","properties":{"border":{"type":"string","title":"Border","default":"#666"},"background":{"type":"string","title":"Background","default":"#FFFFC6"}}}}},"dragNetwork":{"type":"boolean","title":"DragNetwork","default":true},"dragNodes":{"type":"boolean","title":"DragNodes","default":true},"zoomable":{"type":"boolean","title":"Zoomable","default":true},"hover":{"type":"boolean","title":"Hover","default":false},"hideEdgesOnDrag":{"type":"boolean","title":"HideEdgesOnDrag","default":false},"hideNodesOnDrag":{"type":"boolean","title":"HideNodesOnDrag","default":false},"width":{"type":"string","title":"Width","default":"100%"},"height":{"type":"string","title":"Height","default":"100%"},"selectable":{"type":"boolean","title":"Selectable","default":true}}}},"output":{"network":{"type":"Network","title":"Network"},"select":{"type":"object","title":"Select","description":"Fired after the user selects or deselects a node by clicking it. Not fired when the method setSelectionis executed.","properties":{"nodes":{"title":"Nodes","type":"array"},"edges":{"title":"Edges","type":"array"}}},"click":{"type":"object","title":"Click","description":"Fired after the user clicks or taps on a touchscreen.","properties":{"nodes":{"title":"Nodes","type":"array"},"edges":{"title":"Edges","type":"array"}}},"doubleClick":{"type":"object","title":"Click","description":"Fired after the user double clicks or double taps on a touchscreen.","properties":{"nodes":{"title":"Nodes","type":"array"},"edges":{"title":"Edges","type":"array"},"pointer":{"title":"Pointer","type":"object","properties":{"DOM":{"title":"DOM Pointer","type":"object","properties":{"x":{"type":"number"},"y":{"type":"number"}}},"canvas":{"title":"Canvas Pointer","type":"object","properties":{"x":{"type":"number"},"y":{"type":"number"}}}}}}},"hoverNode":{"type":"object","title":"Hover Node","description":"Fired when the mouse is moved over a node (assuming the hover option is enabled)."},"blurNode":{"type":"object","title":"Blur Node","description":"Fired when the mouse is moved off a node (assuming the hover option is enabled)."},"resize":{"type":"object","title":"Resize","description":"Fired when the size of the canvas has been resized, either by a redraw call when the container div has changed in size, a setSize() call with new values or a setOptions() with new width and/or height values."},"dragStart":{"type":"array","title":"Drag Start","description":"Fired when a node is being dragged."},"dragEnd":{"type":"array","title":"Drag Start","description":"Fired when the dragging of a node(s) has ended."},"startStabilization":{"type":"object","description":"Fired once when the network starts the physics calculation. This ends with the stabilized event."},"stabilized":{"type":"number","description":"Fired every time the network has been stabilized. "},"viewChanged":{"type":"object","description":"Fired when the view has changed. This is when the network has moved or zoomed."},"zoom":{"type":"object","description":"Fired when the network has zoomed. "}}},"fn":"output = function() {\n  var output = cb;\n  var network = new vis.Network(\n    input.container,\n    input.data,\n    input.options\n  );\n\n  function event(name) {\n    return function(event) {\n\n      if (undefined !== event) {\n        var out = {};\n        out[name] = event;\n\n        output(out);\n      } else {\n        // viewChanged for example..\n        console.log('no output on event:', name);\n      }\n\n    };\n  }\n\n  [\n   'select','click','doubleClick','hoverNode',\n   'blurNode','resize','dragEnd','startStabilization',\n   'stabilized','viewChanged','zoom'\n  ].forEach(function(eventName) {\n    // TODO: remove these on shutdown or removal.\n    network.on(eventName, event(eventName));\n  });\n\n  output({network: network});\n\n};\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"},"dataset":{"_id":"548e5b680e9c46154a015c8a","name":"dataset","ns":"vis","async":true,"title":"Vis Dataset","description":"Vis Dataset","dependencies":{"npm":{"vis":"3.x.x"}},"phrases":{"active":"Creating Dataset"},"ports":{"input":{"add":{"type":"Object","title":"Add Node","description":"Add node to this dataset","async":true},"update":{"type":"Object","title":"Update Node","description":"Update node within dataset","async":true},"remove":{"type":"any","title":"Remove Nodes","description":"Remove node from this dataset","async":true}},"output":{"dataset":{"type":"DataSet","title":"DataSet"},"event":{"type":"object","title":"Event","description":"Add, update or remove event"}}},"fn":"state.dataset = new vis.DataSet(/*TODO: options*/);\n\n// too early, listeners for output are not yet setup..\non.start = function() {\n  state.dataset.on('*', function(event, properties, senderId) {\n    output({\n      event: {\n        event: event,\n        properties: properties,\n        senderId: senderId\n      }\n    });\n  });\n  console.log('should now output dataset...'); output({\n    dataset: state.dataset\n  });\n};\n\non.input.add = function () {\n console.log('ADDINGGG', data);  state.dataset.add(data);\n};\non.input.update = function () {\n  state.dataset.update(data);\n};\non.input.remove = function () {\n  state.dataset.update(data);\n};\n\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}},"core":{"actor":{"_id":"5486929dab54be2e930fbd64","name":"actor","ns":"core","title":"Actor","description":"Chix Actor","phrases":{"active":"Exposing Actor"},"ports":{"input":{"actor":{"title":"Actor","type":"Actor","default":null},"loader":{"title":"Loader","type":"Loader","default":null},"io":{"title":"IO Handler","type":"IOMapHandler","default":null},"pm":{"title":"Process Manager","type":"ProcessManager","default":null}},"output":{"actor":{"title":"Actor","type":"Actor"},"addNode":{"title":"Node added","type":"xNode"},"removeNode":{"title":"Node removed","type":"xNode"},"addLink":{"title":"Link added","type":"xLink"},"removeLink":{"title":"Link removed","type":"xLink"},"connect":{"title":"Link connected","type":"xLink"},"disconnect":{"title":"Link disconnected","type":"xLink"},"qm":{"title":"Queue Manager","type":"QueueManager"},"pm":{"title":"Process Manager","type":"ProcessManager"},"io":{"title":"Io Handler","type":"IOMapHandler"},"error":{"title":"Error","type":"object"}}},"dependencies":{"npm":{"chix-flow":"0.x.x"}},"fn":"output = function (cb) {\n\n  var actor = input.actor || this.getParent();\n\n  // probably should do almost the same as npmlog monitor\n\n  actor.on('inputRequired', function (data) {\n    cb({\n      error: data\n    });\n  });\n\n  actor.on('error', function (data) {\n    cb({\n      error: data\n    });\n  });\n\n  actor.on('addNode', function (event) {\n    cb({\n      addNode: event.node\n    });\n  });\n\n  actor.on('removeNode', function (event) {\n    cb({\n      removeNode: event.node\n    });\n  });\n\n  actor.on('addLink', function (link) {\n    cb({\n      addLink: link\n    });\n  });\n\n  actor.on('removeLink', function (link) {\n    cb({\n      removeLink: link\n    });\n  });\n\n  actor.ioHandler.on('connect', function (link) {\n    cb({\n      connect: link\n    });\n  });\n\n  actor.ioHandler.on('disconnect', function (link) {\n    cb({\n      disconnect: link\n    });\n  });\n\n  // useally the actor already started so we send what we have\n  // manually\n  Object.keys(actor.nodes).forEach(function(key) {\n    cb({addNode: actor.nodes[key]});\n  });\n\n  Object.keys(actor.links).forEach(function(key) {\n    cb({addLink: actor.links[key]});\n\n    // also report them all as connected for now\n    cb({connect: actor.links[key]});\n  });\n\n  cb({\n    qm: actor.ioHandler.queueManager,\n    io: actor.ioHandler,\n    pm: actor.processManager\n  });\n\n  // not really useful I guess\n  /*\n  actor.ioHandler.on('data', function (link) {\n    cb({\n      disconnectLink: link\n    });\n  });\n  */\n\n};\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}},"object":{"create":{"_id":"52fa908e909495ebbe6ded4c","name":"create","ns":"object","async":true,"description":"Create an object, if input is a direct object it just returns a copy of the object","phrases":{"active":"Creating object"},"ports":{"input":{"in":{"title":"Object","type":"object","async":true}},"output":{"out":{"title":"out","type":"object"}}},"fn":"on.input.in = function(data) { output({out: data}); };\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}},"console":{"log":{"_id":"52645993df5da0102500004e","name":"log","ns":"console","description":"Console log","async":true,"phrases":{"active":"Logging to console"},"ports":{"input":{"msg":{"type":"any","title":"Log message","description":"Logs a message to the console","async":true,"required":true}},"output":{"out":{"type":"any","title":"Log message"}}},"fn":"on.input.msg = function() {\n  console.log(data);\n  output( { out: data });\n}\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}}}};
+  this.nodeDefinitions = {"https://serve-chix.rhcloud.com/nodes/{ns}/{name}":{"template":{"handlebars":{"_id":"52ea878d1905561c7aa3bdbc","name":"handlebars","ns":"template","description":"Handlebars Template engine","phrases":{"active":"Compiling handlebars template"},"ports":{"input":{"body":{"type":"string","format":"html","title":"Template body","description":"The body of the handlebars template","required":true},"vars":{"type":"object","title":"Input variables","description":"the input variables for this template","default":{}},"handlebars":{"type":"function","title":"Handlebars","default":null}},"output":{"out":{"title":"HTML","type":"string"}}},"dependencies":{"npm":{"handlebars":"latest"}},"fn":"var hb = input.handlebars || handlebars;\nvar tpl = hb.compile(input.body);\noutput = {\n  out: tpl(input.vars)\n}\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}},"dom":{"setHtml":{"_id":"52be32d46a14bb6fbd924a24","name":"setHtml","ns":"dom","description":"dom setHtml","async":true,"phrases":{"active":"Adding html"},"ports":{"input":{"element":{"type":"HTMLElement","title":"Dom Element"},"html":{"type":"string","format":"html","title":"html","async":true}},"output":{"element":{"type":"HTMLElement","title":"Dom Element"}}},"fn":"on.input.html = function(data) {\n  input.element.innerHTML = data;\n  output({ element: input.element });\n};\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"},"querySelector":{"_id":"527299bb30b8af4b8910216b","name":"querySelector","ns":"dom","title":"querySelector","description":"[Document query selector](https://developer.mozilla.org/en-US/docs/Web/API/document.querySelector)","expose":["document"],"phrases":{"active":"Gathering elements matching criteria: {{input.selector}}"},"ports":{"input":{"element":{"title":"Element","type":"HTMLElement","default":null},"selector":{"title":"Selector","type":"string"}},"output":{"element":{"title":"Element","type":"HTMLElement"},"selection":{"title":"Selection","type":"HTMLElement"},"error":{"title":"Error","type":"Error"}}},"fn":"var el = input.element ? input.element : document;\noutput = {\n  element: el\n};\n\nvar selection = el.querySelector(input.selector);\nif(selection) {\n  output.selection = selection;\n} else {\n  output.error = Error('Selector ' + input.selector + ' did not match');\n}\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}},"vis":{"network":{"_id":"548e270f0e9c46154a015c89","name":"network","ns":"vis","title":"Vis Network","description":"Create a network visualization, displaying nodes and edges.","dependencies":{"npm":{"vis":"3.x.x"}},"phrases":{"active":"Creating Vis network"},"ports":{"input":{"container":{"type":"Element","title":"Container","description":"The DOM element in which the Network will be created. Normally a div element."},"data":{"type":"object","title":"Data","description":"An object containing parameters {Array} nodes\n{Array} edges","properties":{"nodes":{"title":"Nodes","type":"array","default":[]},"edges":{"title":"Edges","type":"array","default":[]},"dot":{"title":"String","type":"string","required":false}}},"options":{"type":"object","title":"Options","description":"Options","properties":{"nodes":{"type":"object","properties":{"mass":{"type":"number","title":"Mass","default":1},"radiusMin":{"type":"number","title":"RadiusMin","default":10},"radiusMax":{"type":"number","title":"RadiusMax","default":30},"radius":{"type":"number","title":"Radius","default":10},"shape":{"type":"string","title":"Shape","default":"ellipse"},"widthMin":{"type":"number","title":"WidthMin","default":16},"widthMax":{"type":"number","title":"WidthMax","default":64},"fontColor":{"type":"string","title":"FontColor","default":"black"},"fontSize":{"type":"number","title":"FontSize","default":14},"fontFace":{"type":"string","title":"FontFace","default":"verdana"},"level":{"type":"number","title":"Level","default":-1},"color":{"type":"object","properties":{"border":{"type":"string","title":"Border","default":"#2B7CE9"},"background":{"type":"string","title":"Background","default":"#97C2FC"},"highlight":{"type":"object","properties":{"border":{"type":"string","title":"Border","default":"#2B7CE9"},"background":{"type":"string","title":"Background","default":"#D2E5FF"}}},"hover":{"type":"object","properties":{"border":{"type":"string","title":"Border","default":"#2B7CE9"},"background":{"type":"string","title":"Background","default":"#D2E5FF"}}}}},"borderColor":{"type":"string","title":"BorderColor","default":"#2B7CE9"},"backgroundColor":{"type":"string","title":"BackgroundColor","default":"#97C2FC"},"highlightColor":{"type":"string","title":"HighlightColor","default":"#D2E5FF"},"borderWidth":{"type":"number","title":"BorderWidth","default":1}}},"edges":{"type":"object","properties":{"widthMin":{"type":"number","title":"WidthMin","default":1},"widthMax":{"type":"number","title":"WidthMax","default":15},"width":{"type":"number","title":"Width","default":1},"widthSelectionMultiplier":{"type":"number","title":"WidthSelectionMultiplier","default":2},"hoverWidth":{"type":"number","title":"HoverWidth","default":1.5},"style":{"type":"string","title":"Style","default":"line"},"color":{"type":"object","properties":{"color":{"type":"string","title":"Color","default":"#848484"},"highlight":{"type":"string","title":"Highlight","default":"#848484"},"hover":{"type":"string","title":"Hover","default":"#848484"}}},"fontColor":{"type":"string","title":"FontColor","default":"#343434"},"fontSize":{"type":"number","title":"FontSize","default":14},"fontFace":{"type":"string","title":"FontFace","default":"arial"},"fontFill":{"type":"string","title":"FontFill","default":"white"},"arrowScaleFactor":{"type":"number","title":"ArrowScaleFactor","default":1},"dash":{"type":"object","properties":{"length":{"type":"number","title":"Length","default":10},"gap":{"type":"number","title":"Gap","default":5}}},"inheritColor":{"type":"string","title":"InheritColor","default":"from"}}},"configurePhysics":{"type":"boolean","title":"ConfigurePhysics","default":false},"physics":{"type":"object","properties":{"barnesHut":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":true},"theta":{"type":"number","title":"Theta","default":1.6666666666666667},"gravitationalConstant":{"type":"number","title":"GravitationalConstant","default":-2000},"centralGravity":{"type":"number","title":"CentralGravity","default":0.3},"springLength":{"type":"number","title":"SpringLength","default":95},"springConstant":{"type":"number","title":"SpringConstant","default":0.04},"damping":{"type":"number","title":"Damping","default":0.09}}},"repulsion":{"type":"object","properties":{"centralGravity":{"type":"number","title":"CentralGravity","default":0},"springLength":{"type":"number","title":"SpringLength","default":200},"springConstant":{"type":"number","title":"SpringConstant","default":0.05},"nodeDistance":{"type":"number","title":"NodeDistance","default":100},"damping":{"type":"number","title":"Damping","default":0.09}}},"hierarchicalRepulsion":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":false},"centralGravity":{"type":"number","title":"CentralGravity","default":0},"springLength":{"type":"number","title":"SpringLength","default":100},"springConstant":{"type":"number","title":"SpringConstant","default":0.01},"nodeDistance":{"type":"number","title":"NodeDistance","default":150},"damping":{"type":"number","title":"Damping","default":0.09}}},"damping":{"type":"null","title":"Damping","default":null},"centralGravity":{"type":"null","title":"CentralGravity","default":null},"springLength":{"type":"null","title":"SpringLength","default":null},"springConstant":{"type":"null","title":"SpringConstant","default":null}}},"clustering":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":false},"initialMaxNodes":{"type":"number","title":"InitialMaxNodes","default":100},"clusterThreshold":{"type":"number","title":"ClusterThreshold","default":500},"reduceToNodes":{"type":"number","title":"ReduceToNodes","default":300},"chainThreshold":{"type":"number","title":"ChainThreshold","default":0.4},"clusterEdgeThreshold":{"type":"number","title":"ClusterEdgeThreshold","default":20},"sectorThreshold":{"type":"number","title":"SectorThreshold","default":100},"screenSizeThreshold":{"type":"number","title":"ScreenSizeThreshold","default":0.2},"fontSizeMultiplier":{"type":"number","title":"FontSizeMultiplier","default":4},"maxFontSize":{"type":"number","title":"MaxFontSize","default":1000},"forceAmplification":{"type":"number","title":"ForceAmplification","default":0.1},"distanceAmplification":{"type":"number","title":"DistanceAmplification","default":0.1},"edgeGrowth":{"type":"number","title":"EdgeGrowth","default":20},"nodeScaling":{"type":"object","properties":{"width":{"type":"number","title":"Width","default":1},"height":{"type":"number","title":"Height","default":1},"radius":{"type":"number","title":"Radius","default":1}}},"maxNodeSizeIncrements":{"type":"number","title":"MaxNodeSizeIncrements","default":600},"activeAreaBoxSize":{"type":"number","title":"ActiveAreaBoxSize","default":80},"clusterLevelDifference":{"type":"number","title":"ClusterLevelDifference","default":2}}},"navigation":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":false}}},"keyboard":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":false},"speed":{"type":"object","properties":{"x":{"type":"number","title":"X","default":10},"y":{"type":"number","title":"Y","default":10},"zoom":{"type":"number","title":"Zoom","default":0.02}}}}},"dataManipulation":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":false},"initiallyVisible":{"type":"boolean","title":"InitiallyVisible","default":false}}},"hierarchicalLayout":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":false},"levelSeparation":{"type":"number","title":"LevelSeparation","default":150},"nodeSpacing":{"type":"number","title":"NodeSpacing","default":100},"direction":{"type":"string","title":"Direction","default":"UD"},"layout":{"type":"string","title":"Layout","default":"hubsize"}}},"freezeForStabilization":{"type":"boolean","title":"FreezeForStabilization","default":false},"smoothCurves":{"type":"object","properties":{"enabled":{"type":"boolean","title":"Enabled","default":true},"dynamic":{"type":"boolean","title":"Dynamic","default":true},"type":{"type":"string","title":"Type","default":"continuous"},"roundness":{"type":"number","title":"Roundness","default":0.5}}},"maxVelocity":{"type":"number","title":"MaxVelocity","default":30},"minVelocity":{"type":"number","title":"MinVelocity","default":0.1},"stabilize":{"type":"boolean","title":"Stabilize","default":true},"stabilizationIterations":{"type":"number","title":"StabilizationIterations","default":1000},"locale":{"type":"string","title":"Locale","enum":["en","en_EN","enUS","nl","nl_NL","nl_BE"],"default":"en"},"tooltip":{"type":"object","properties":{"delay":{"type":"number","title":"Delay","default":300},"fontColor":{"type":"string","title":"FontColor","default":"black"},"fontSize":{"type":"number","title":"FontSize","default":14},"fontFace":{"type":"string","title":"FontFace","default":"verdana"},"color":{"type":"object","properties":{"border":{"type":"string","title":"Border","default":"#666"},"background":{"type":"string","title":"Background","default":"#FFFFC6"}}}}},"dragNetwork":{"type":"boolean","title":"DragNetwork","default":true},"dragNodes":{"type":"boolean","title":"DragNodes","default":true},"zoomable":{"type":"boolean","title":"Zoomable","default":true},"hover":{"type":"boolean","title":"Hover","default":false},"hideEdgesOnDrag":{"type":"boolean","title":"HideEdgesOnDrag","default":false},"hideNodesOnDrag":{"type":"boolean","title":"HideNodesOnDrag","default":false},"width":{"type":"string","title":"Width","default":"100%"},"height":{"type":"string","title":"Height","default":"100%"},"selectable":{"type":"boolean","title":"Selectable","default":true}}}},"output":{"network":{"type":"Network","title":"Network"},"select":{"type":"object","title":"Select","description":"Fired after the user selects or deselects a node by clicking it. Not fired when the method setSelectionis executed.","properties":{"nodes":{"title":"Nodes","type":"array"},"edges":{"title":"Edges","type":"array"}}},"click":{"type":"object","title":"Click","description":"Fired after the user clicks or taps on a touchscreen.","properties":{"nodes":{"title":"Nodes","type":"array"},"edges":{"title":"Edges","type":"array"}}},"doubleClick":{"type":"object","title":"Click","description":"Fired after the user double clicks or double taps on a touchscreen.","properties":{"nodes":{"title":"Nodes","type":"array"},"edges":{"title":"Edges","type":"array"},"pointer":{"title":"Pointer","type":"object","properties":{"DOM":{"title":"DOM Pointer","type":"object","properties":{"x":{"type":"number"},"y":{"type":"number"}}},"canvas":{"title":"Canvas Pointer","type":"object","properties":{"x":{"type":"number"},"y":{"type":"number"}}}}}}},"hoverNode":{"type":"object","title":"Hover Node","description":"Fired when the mouse is moved over a node (assuming the hover option is enabled)."},"blurNode":{"type":"object","title":"Blur Node","description":"Fired when the mouse is moved off a node (assuming the hover option is enabled)."},"resize":{"type":"object","title":"Resize","description":"Fired when the size of the canvas has been resized, either by a redraw call when the container div has changed in size, a setSize() call with new values or a setOptions() with new width and/or height values."},"dragStart":{"type":"array","title":"Drag Start","description":"Fired when a node is being dragged."},"dragEnd":{"type":"array","title":"Drag Start","description":"Fired when the dragging of a node(s) has ended."},"startStabilization":{"type":"object","description":"Fired once when the network starts the physics calculation. This ends with the stabilized event."},"stabilized":{"type":"number","description":"Fired every time the network has been stabilized. "},"viewChanged":{"type":"object","description":"Fired when the view has changed. This is when the network has moved or zoomed."},"zoom":{"type":"object","description":"Fired when the network has zoomed. "}}},"fn":"output = function() {\n  var output = cb;\n  var network = new vis.Network(\n    input.container,\n    input.data,\n    input.options\n  );\n\n  function event(name) {\n    return function(event) {\n\n      if (undefined !== event) {\n        var out = {};\n        out[name] = event;\n\n        output(out);\n      } else {\n        // viewChanged for example..\n        console.log('no output on event:', name);\n      }\n\n    };\n  }\n\n  [\n   'select','click','doubleClick','hoverNode',\n   'blurNode','resize','dragEnd','startStabilization',\n   'stabilized','viewChanged','zoom'\n  ].forEach(function(eventName) {\n    // TODO: remove these on shutdown or removal.\n    network.on(eventName, event(eventName));\n  });\n\n  output({network: network});\n\n};\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"},"dataset":{"_id":"548e5b680e9c46154a015c8a","name":"dataset","ns":"vis","async":true,"title":"Vis Dataset","description":"Vis Dataset","dependencies":{"npm":{"vis":"3.x.x"}},"phrases":{"active":"Creating Dataset"},"ports":{"input":{"add":{"type":"Object","title":"Add Item","description":"Add itemto this dataset","async":true},"update":{"type":"Object","title":"Update Item","description":"Update item within dataset","async":true},"remove":{"type":"any","title":"Remove Item","description":"Remove item from this dataset","async":true}},"output":{"dataset":{"type":"DataSet","title":"DataSet"},"event":{"type":"object","title":"Event","description":"Add, update or remove event"}}},"fn":"state.dataset = new vis.DataSet(/*TODO: options*/);\n\n// too early, listeners for output are not yet setup..\non.start = function() {\n  state.dataset.on('*', function(event, properties, senderId) {\n    output({\n      event: {\n        event: event,\n        properties: properties,\n        senderId: senderId\n      }\n    });\n  });\n  output({\n    dataset: state.dataset\n  });\n};\n\non.input.add = function () {\n  state.dataset.add(data);\n};\non.input.update = function () {\n  state.dataset.update(data);\n};\non.input.remove = function () {\n  state.dataset.update(data);\n};\n\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}},"core":{"actor":{"_id":"5486929dab54be2e930fbd64","name":"actor","ns":"core","title":"Actor","description":"Chix Actor","phrases":{"active":"Exposing Actor"},"ports":{"input":{"actor":{"title":"Actor","type":"Actor","default":null},"loader":{"title":"Loader","type":"Loader","default":null},"io":{"title":"IO Handler","type":"IOMapHandler","default":null},"pm":{"title":"Process Manager","type":"ProcessManager","default":null}},"output":{"actor":{"title":"Actor","type":"Actor"},"addNode":{"title":"Node added","type":"xNode"},"removeNode":{"title":"Node removed","type":"xNode"},"addLink":{"title":"Link added","type":"xLink"},"removeLink":{"title":"Link removed","type":"xLink"},"connect":{"title":"Link connected","type":"xLink"},"disconnect":{"title":"Link disconnected","type":"xLink"},"qm":{"title":"Queue Manager","type":"QueueManager"},"pm":{"title":"Process Manager","type":"ProcessManager"},"io":{"title":"Io Handler","type":"IOMapHandler"},"error":{"title":"Error","type":"object"}}},"dependencies":{"npm":{"chix-flow":"0.x.x"}},"fn":"output = function (cb) {\n\n  var actor = input.actor || this.getParent();\n\n  // probably should do almost the same as npmlog monitor\n\n  actor.on('inputRequired', function (data) {\n    cb({\n      error: data\n    });\n  });\n\n  actor.on('error', function (data) {\n    cb({\n      error: data\n    });\n  });\n\n  actor.on('addNode', function (event) {\n    cb({\n      addNode: event.node\n    });\n  });\n\n  actor.on('removeNode', function (event) {\n    cb({\n      removeNode: event.node\n    });\n  });\n\n  actor.on('addLink', function (link) {\n    cb({\n      addLink: link\n    });\n  });\n\n  actor.on('removeLink', function (link) {\n    cb({\n      removeLink: link\n    });\n  });\n\n  actor.ioHandler.on('connect', function (link) {\n    cb({\n      connect: link\n    });\n  });\n\n  actor.ioHandler.on('disconnect', function (link) {\n    cb({\n      disconnect: link\n    });\n  });\n\n  // useally the actor already started so we send what we have\n  // manually\n  Object.keys(actor.nodes).forEach(function(key) {\n    cb({addNode: actor.nodes[key]});\n  });\n\n  Object.keys(actor.links).forEach(function(key) {\n    cb({addLink: actor.links[key]});\n\n    // also report them all as connected for now\n    cb({connect: actor.links[key]});\n  });\n\n  cb({\n    qm: actor.ioHandler.queueManager,\n    io: actor.ioHandler,\n    pm: actor.processManager\n  });\n\n  // not really useful I guess\n  /*\n  actor.ioHandler.on('data', function (link) {\n    cb({\n      disconnectLink: link\n    });\n  });\n  */\n\n};\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}},"object":{"create":{"_id":"52fa908e909495ebbe6ded4c","name":"create","ns":"object","async":true,"description":"Create an object, if input is a direct object it just returns a copy of the object","phrases":{"active":"Creating object"},"ports":{"input":{"in":{"title":"Object","type":"object","async":true}},"output":{"out":{"title":"out","type":"object"}}},"fn":"on.input.in = function(data) { output({out: data}); };\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"},"transfer":{"_id":"548e9b250e9c46154a015c8b","name":"transfer","ns":"object","async":true,"description":"Transfer a properties from one object to another object.","phrases":{"active":"Transfering object properties"},"ports":{"input":{"in":{"title":"Input Object","type":"object","async":true},"from":{"title":"From","type":"array"},"to":{"title":"To","type":"array"}},"output":{"error":{"title":"Error","type":"object"},"out":{"title":"Output","type":"object"}}},"dependencies":{"npm":{"dot-object":"0.x.x"}},"fn":"on.input.in = function(data) {\n  var doo;\n  var i;\n\n  // Receiving an array, check both are of the same length.\n  if(input.from.length !== input.to.length) {\n    output({error: Error('from length does not match to length')});\n  } else {\n    doo = dot_object();\n    var out = {};\n    var merge = true;\n    for(i = 0; i < input.from.length; i++) {\n      doo.transfer(input.from[i], input.to[i], data, out, merge);\n    }\n\n    output({out: out});\n  }\n\n};\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}},"console":{"log":{"_id":"52645993df5da0102500004e","name":"log","ns":"console","description":"Console log","async":true,"phrases":{"active":"Logging to console"},"ports":{"input":{"msg":{"type":"any","title":"Log message","description":"Logs a message to the console","async":true,"required":true}},"output":{"out":{"type":"any","title":"Log message"}}},"fn":"on.input.msg = function() {\n  console.log(data);\n  output( { out: data });\n}\n","provider":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}}}};
 
 };
 
@@ -49695,7 +49938,7 @@ Loader.prototype.getNodeDefinition = function(node) {
 var Flow = require('chix-flow').Flow;
 var loader = new Loader();
 
-var map = {"id":"806ff5f7-271b-49d7-a144-3f7ba392d4b3","type":"flow","links":[{"source":{"id":"BodyEl","port":"selection"},"target":{"id":"NetworkViewUpdate","port":"element"},"metadata":{"title":"BodyEl selection -> element NetworkViewUpdate"}},{"source":{"id":"NetworkEl","port":"selection"},"target":{"id":"Network","port":"container"},"metadata":{"title":"NetworkEl selection -> container Network"}},{"source":{"id":"Actor","port":"addNode"},"target":{"id":"DataSet","port":"add"},"metadata":{"title":"Actor addNode -> add DataSet"}},{"source":{"id":"DataSet","port":"dataset"},"target":{"id":"Log","port":"msg"},"metadata":{"title":"DataSet dataset -> msg Log"}},{"source":{"id":"DataSet","port":"event"},"target":{"id":"Log","port":"msg"},"metadata":{"title":"DataSet event -> msg Log"}},{"source":{"id":"DataSet","port":"dataset"},"target":{"id":"Network","port":"data"},"metadata":{"title":"DataSet dataset -> data Network"}},{"source":{"id":"NetworkView","port":"out"},"target":{"id":"NetworkViewUpdate","port":"html"},"metadata":{"title":"NetworkView out -> html NetworkViewUpdate"}},{"source":{"id":"NetworkViewUpdate","port":"element"},"target":{"id":"NetworkEl","port":":start"},"metadata":{"title":"NetworkViewUpdate element -> :start NetworkEl"}}],"nodes":[{"id":"NetworkView","title":"NetworkView","ns":"template","name":"handlebars"},{"id":"NetworkViewUpdate","title":"NetworkViewUpdate","ns":"dom","name":"setHtml"},{"id":"BodyEl","title":"BodyEl","ns":"dom","name":"querySelector"},{"id":"NetworkEl","title":"NetworkEl","ns":"dom","name":"querySelector"},{"id":"Network","title":"Network","ns":"vis","name":"network","context":{"options":{}}},{"id":"Actor","title":"Actor","ns":"core","name":"actor"},{"id":"NetworkNode","title":"NetworkNode","ns":"object","name":"create"},{"id":"NetworkLink","title":"NetworkLink","ns":"object","name":"create"},{"id":"DataSet","title":"DataSet","ns":"vis","name":"dataset"},{"id":"Log","title":"Log","ns":"console","name":"log"}],"title":"MLK","providers":{"@":{"url":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}}};
+var map = {"id":"5778e626-d65a-4db9-b0be-a6d553e31f0f","type":"flow","links":[{"source":{"id":"BodyEl","port":"selection"},"target":{"id":"NetworkViewUpdate","port":"element"},"metadata":{"title":"BodyEl selection -> element NetworkViewUpdate"}},{"source":{"id":"NetworkEl","port":"selection"},"target":{"id":"Network","port":"container"},"metadata":{"title":"NetworkEl selection -> container Network"}},{"source":{"id":"Actor","port":"addNode"},"target":{"id":"NodeDataSet","port":"add"},"metadata":{"title":"Actor addNode -> add NodeDataSet"}},{"source":{"id":"Actor","port":"addLink"},"target":{"id":"LinkModel","port":"in"},"metadata":{"title":"Actor addLink -> in LinkModel"}},{"source":{"id":"LinkModel","port":"out"},"target":{"id":"EdgeDataSet","port":"add"},"metadata":{"title":"LinkModel out -> add EdgeDataSet"}},{"source":{"id":"NodeDataSet","port":"dataset"},"target":{"id":"Network","port":"data","setting":{"index":"nodes"}},"metadata":{"title":"NodeDataSet dataset -> data Network"}},{"source":{"id":"EdgeDataSet","port":"dataset"},"target":{"id":"Network","port":"data","setting":{"index":"edges"}},"metadata":{"title":"EdgeDataSet dataset -> data Network"}},{"source":{"id":"NetworkView","port":"out"},"target":{"id":"NetworkViewUpdate","port":"html"},"metadata":{"title":"NetworkView out -> html NetworkViewUpdate"}},{"source":{"id":"NetworkViewUpdate","port":"element"},"target":{"id":"NetworkEl","port":":start"},"metadata":{"title":"NetworkViewUpdate element -> :start NetworkEl"}}],"nodes":[{"id":"NetworkView","title":"NetworkView","ns":"template","name":"handlebars"},{"id":"NetworkViewUpdate","title":"NetworkViewUpdate","ns":"dom","name":"setHtml"},{"id":"BodyEl","title":"BodyEl","ns":"dom","name":"querySelector"},{"id":"NetworkEl","title":"NetworkEl","ns":"dom","name":"querySelector"},{"id":"Network","title":"Network","ns":"vis","name":"network","context":{"options":{}}},{"id":"Actor","title":"Actor","ns":"core","name":"actor"},{"id":"NetworkNode","title":"NetworkNode","ns":"object","name":"create"},{"id":"NetworkLink","title":"NetworkLink","ns":"object","name":"create"},{"id":"NodeDataSet","title":"NodeDataSet","ns":"vis","name":"dataset","context":{"options":{"fieldId":"pid"}}},{"id":"EdgeDataSet","title":"EdgeDataSet","ns":"vis","name":"dataset"},{"id":"Log","title":"Log","ns":"console","name":"log"},{"id":"LinkModel","title":"LinkModel","ns":"object","name":"transfer","context":{"from":["source.pid","target.pid"],"to":["from","to"]}}],"title":"Vis FBP","providers":{"@":{"url":"https://serve-chix.rhcloud.com/nodes/{ns}/{name}"}}};
 
 var actor;
 window.Actor = actor = Flow.create(map, loader);
@@ -49706,7 +49949,7 @@ monitor(console, actor);
 function onDeviceReady() {
 actor.run();
 actor.push();
-actor.sendIIPs([{"source":{"id":"806ff5f7-271b-49d7-a144-3f7ba392d4b3","port":":iip"},"target":{"id":"NetworkView","port":"body"},"metadata":{"title":"MLK :iip -> body NetworkView"},"data":"<div class=\"panel panel-warning\">\n  <div class=\"panel-heading\">\n    <h3 class=\"panel-title\">{{title}} - yoooo</h3>\n  </div>\n  <div class=\"panel-body\">\n    <div class=\"container-fluid\">\n      <div class=\"row\">\n        <div class=\"col-md-12\">\n          <div id=\"network\"></div>\n        </div>\n      </div>\n    </div>\n  </div>\n</div>\n"},{"source":{"id":"806ff5f7-271b-49d7-a144-3f7ba392d4b3","port":":iip"},"target":{"id":"NetworkView","port":"vars"},"metadata":{"title":"MLK :iip -> vars NetworkView"},"data":{"title":"VIS FBP"}},{"source":{"id":"806ff5f7-271b-49d7-a144-3f7ba392d4b3","port":":iip"},"target":{"id":"BodyEl","port":"selector"},"metadata":{"title":"MLK :iip -> selector BodyEl"},"data":"body"},{"source":{"id":"806ff5f7-271b-49d7-a144-3f7ba392d4b3","port":":iip"},"target":{"id":"NetworkEl","port":"selector"},"metadata":{"title":"MLK :iip -> selector NetworkEl"},"data":"#network"},{"source":{"id":"806ff5f7-271b-49d7-a144-3f7ba392d4b3","port":":iip"},"target":{"id":"Actor","port":":start"},"metadata":{"title":"MLK :iip -> :start Actor"},"data":""}]);
+actor.sendIIPs([{"source":{"id":"5778e626-d65a-4db9-b0be-a6d553e31f0f","port":":iip"},"target":{"id":"NetworkView","port":"body"},"metadata":{"title":"Vis FBP :iip -> body NetworkView"},"data":"<div class=\"panel panel-warning\">\n  <div class=\"panel-heading\">\n    <h3 class=\"panel-title\">{{title}} - yoooo</h3>\n  </div>\n  <div class=\"panel-body\">\n    <div class=\"container-fluid\">\n      <div class=\"row\">\n        <div class=\"col-md-12\">\n          <div id=\"network\"></div>\n        </div>\n      </div>\n    </div>\n  </div>\n</div>\n"},{"source":{"id":"5778e626-d65a-4db9-b0be-a6d553e31f0f","port":":iip"},"target":{"id":"NetworkView","port":"vars"},"metadata":{"title":"Vis FBP :iip -> vars NetworkView"},"data":{"title":"VIS FBP"}},{"source":{"id":"5778e626-d65a-4db9-b0be-a6d553e31f0f","port":":iip"},"target":{"id":"BodyEl","port":"selector"},"metadata":{"title":"Vis FBP :iip -> selector BodyEl"},"data":"body"},{"source":{"id":"5778e626-d65a-4db9-b0be-a6d553e31f0f","port":":iip"},"target":{"id":"NetworkEl","port":"selector"},"metadata":{"title":"Vis FBP :iip -> selector NetworkEl"},"data":"#network"},{"source":{"id":"5778e626-d65a-4db9-b0be-a6d553e31f0f","port":":iip"},"target":{"id":"Actor","port":":start"},"metadata":{"title":"Vis FBP :iip -> :start Actor"},"data":""}]);
 
 };
 
@@ -49720,4 +49963,6 @@ if (navigator.userAgent.match(/(iPhone|iPod|iPad|Android|BlackBerry|IEMobile)/))
 // as long as this module is loaded.
 module.exports = actor;
 
-},{"chix-flow":"jXAsbI","chix-monitor-npmlog":"HNG52E"}]},{},["keAs0r"])
+},{"chix-flow":"jXAsbI","chix-monitor-npmlog":"HNG52E"}],"network":[function(require,module,exports){
+module.exports=require('keAs0r');
+},{}]},{},["keAs0r"])

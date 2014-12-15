@@ -1,4 +1,4 @@
-title: MLK
+title: Vis FBP
 
 NetworkView(template/handlebars)
 NetworkViewUpdate(dom/setHtml)
@@ -12,7 +12,8 @@ Actor(core/actor)
 NetworkNode(object/create)
 NetworkLink(object/create)
 
-DataSet(vis/dataset)
+NodeDataSet(vis/dataset)
+EdgeDataSet(vis/dataset)
 
 Log(console/log)
 
@@ -33,28 +34,22 @@ NetworkEl selection -> container Network
 # err ok, must rename also
 #Actor addNode [id] -> [id] add DataSet
 #Actor addNode [id] -> [label] add DataSet
-Actor addNode -> add DataSet
+LinkModel(object/transfer)
+["source.pid","target.pid"] -> @from LinkModel
+["from","to"]               ->   @to LinkModel
 
-DataSet dataset -> msg Log
-DataSet event -> msg Log
-DataSet dataset -> data Network
-/*
-{
-  "nodes": [
-    {"id": 1, "label": "Node 1"},
-    {"id": 2, "label": "Node 2"},
-    {"id": 3, "label": "Node 3"},
-    {"id": 4, "label": "Node 4"},
-    {"id": 5, "label": "Node 5"}
-  ],
-  "edges": [
-    { "from": 1, "to": 2},
-    { "from": 1, "to": 3},
-    { "from": 2, "to": 4},
-    { "from": 2, "to": 5}
-  ]
-} -> @data Network
-*/
+# ok transfer is the best I can think of.
+
+{"fieldId": "pid"} -> @options NodeDataSet
+Actor addNode -> add NodeDataSet
+Actor addLink -> in LinkModel
+
+LinkModel out -> add EdgeDataSet
+
+#Actor addNode -> msg Log
+
+NodeDataSet dataset -> [nodes] data Network
+EdgeDataSet dataset -> [edges] data Network
 
 {} -> @options Network
 

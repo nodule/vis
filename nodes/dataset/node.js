@@ -1,7 +1,6 @@
-state.dataset = new vis.DataSet(/*TODO: options*/);
-
-// too early, listeners for output are not yet setup..
 on.start = function() {
+  // input.options will not work from here
+  state.dataset = new vis.DataSet(/*input.options*/);
   state.dataset.on('*', function(event, properties, senderId) {
     output({
       event: {

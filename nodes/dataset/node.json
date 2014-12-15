@@ -14,6 +14,10 @@
   },
   "ports": {
     "input": {
+      "options": {
+        "type": "Object",
+        "title": "Options"
+      },
       "add": {
         "type": "Object",
         "title": "Add Item",
