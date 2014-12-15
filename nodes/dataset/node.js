@@ -3,9 +3,11 @@ state.dataset = new vis.DataSet(/*TODO: options*/);
 state.dataset.on('*', function(event, properties, senderId) {
   // output() func available?
   output({
-    event: event,
-    properties: properties,
-    senderId: senderId
+    event: {
+      event: event,
+      properties: properties,
+      senderId: senderId
+    }
   });
 });
 
