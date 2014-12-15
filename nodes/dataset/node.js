@@ -10,7 +10,8 @@ on.input.remove = function () {
   state.dataset.update(data);
 };
 
-output = fuction() {
+output = function() {
+
   state.dataset.on('*', function(event, properties, senderId) {
     // output() func available?
     cb({
@@ -21,4 +22,5 @@ output = fuction() {
       }
     });
   });
-}
+
+};
