@@ -10,6 +10,9 @@ on.setup = function() {
       }
     });
   });
+  output({
+    dataset: state.dataset
+  });
 };
 
 on.input.add = function () {
