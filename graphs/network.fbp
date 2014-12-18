@@ -36,6 +36,8 @@ NodeModel(object/copy)
 ["source.pid","target.pid"] -> @from EdgeModel
 ["from","to"]               ->   @to EdgeModel
 
+# length is added, but I see no difference
+{"length": 25, "value": 6, "width": 5} -> @target NodeModel
 ["pid","title","title"] -> @from NodeModel
 ["id","label","title"]  ->   @to NodeModel
 
