@@ -16,12 +16,12 @@ on.start = function() {
 };
 
 on.input.add = function () {
-  state.dataset.add(data);
+  state.dataset.add(input.add);
 };
 on.input.update = function () {
-  state.dataset.update(data);
+  state.dataset.update(input.update);
 };
 on.input.remove = function () {
-  state.dataset.update(data);
+  state.dataset.update(input.remove);
 };
 
