@@ -1,6 +1,6 @@
 on.start = function() {
-  // input.options will not work from here
-  state.dataset = new vis.DataSet(/*input.options*/);
+  // $.options will not work from here
+  state.dataset = new vis.DataSet(/*$.options*/);
   state.dataset.on('*', function(event, properties, senderId) {
     output({
       event: {
@@ -16,12 +16,12 @@ on.start = function() {
 };
 
 on.input.add = function () {
-  state.dataset.add(input.add);
+  state.dataset.add($.add);
 };
 on.input.update = function () {
-  state.dataset.update(input.update);
+  state.dataset.update($.update);
 };
 on.input.remove = function () {
-  state.dataset.update(input.remove);
+  state.dataset.update($.remove);
 };
 
