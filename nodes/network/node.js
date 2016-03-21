@@ -8,17 +8,15 @@ output = function() {
 
   function event(name) {
     return function(event) {
-
       if (undefined !== event) {
         var out = {};
-        out[name] = event;
+        out[name] = $.create(event);
 
         output(out);
       } else {
         // viewChanged for example..
         console.log('no output on event:', name);
       }
-
     };
   }
 
@@ -31,6 +29,5 @@ output = function() {
     network.on(eventName, event(eventName));
   });
 
-  output({network: network});
-
+  output({network: $.create(network)});
 };

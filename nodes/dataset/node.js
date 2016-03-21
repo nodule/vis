@@ -3,16 +3,10 @@ on.start = function() {
   state.dataset = new vis.DataSet(/*$.options*/);
   state.dataset.on('*', function(event, properties, senderId) {
     output({
-      event: {
-        event: event,
-        properties: properties,
-        senderId: senderId
-      }
+      event: $.create({event: event, properties: properties, senderId: senderId})
     });
   });
-  output({
-    dataset: state.dataset
-  });
+  output({dataset: $.create(state.dataset)});
 };
 
 on.input.add = function () {
