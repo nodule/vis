@@ -59,7 +59,7 @@
       "async": true,
       "ns": "vis",
       "name": "dataset",
-      "fn": "on.start = function() {\n  // input.options will not work from here\n  state.dataset = new vis.DataSet(/*input.options*/);\n  state.dataset.on('*', function(event, properties, senderId) {\n    output({\n      event: {\n        event: event,\n        properties: properties,\n        senderId: senderId\n      }\n    });\n  });\n  output({\n    dataset: state.dataset\n  });\n};\n\non.input.add = function () {\n  state.dataset.add(data);\n};\non.input.update = function () {\n  state.dataset.update(data);\n};\non.input.remove = function () {\n  state.dataset.update(data);\n};\n\n"
+      "fn": "on.start = function() {\n  // $.options will not work from here\n  state.dataset = new vis.DataSet(/*$.options*/);\n  state.dataset.on('*', function(event, properties, senderId) {\n    output({\n      event: $.create({event: event, properties: properties, senderId: senderId})\n    });\n  });\n  output({dataset: $.create(state.dataset)});\n};\n\non.input.add = function () {\n  state.dataset.add($.add);\n};\non.input.update = function () {\n  state.dataset.update($.update);\n};\non.input.remove = function () {\n  state.dataset.update($.remove);\n};\n\n"
     },
     {
       "ports": {
@@ -932,7 +932,7 @@
       "title": "Vis Network",
       "ns": "vis",
       "name": "network",
-      "fn": "output = function() {\n  var output = cb;\n  var network = new vis.Network(\n    input.container,\n    input.data,\n    input.options\n  );\n\n  function event(name) {\n    return function(event) {\n\n      if (undefined !== event) {\n        var out = {};\n        out[name] = event;\n\n        output(out);\n      } else {\n        // viewChanged for example..\n        console.log('no output on event:', name);\n      }\n\n    };\n  }\n\n  [\n   'select','click','doubleClick','hoverNode',\n   'blurNode','resize','dragEnd','startStabilization',\n   'stabilized','viewChanged','zoom'\n  ].forEach(function(eventName) {\n    // TODO: remove these on shutdown or removal.\n    network.on(eventName, event(eventName));\n  });\n\n  output({network: network});\n\n};\n"
+      "fn": "output = function() {\n  var output = cb;\n  var network = new vis.Network(\n    $.container,\n    $.data,\n    $.options\n  );\n\n  function event(name) {\n    return function(event) {\n      if (undefined !== event) {\n        var out = {};\n        out[name] = $.create(event);\n\n        output(out);\n      } else {\n        // viewChanged for example..\n        console.log('no output on event:', name);\n      }\n    };\n  }\n\n  [\n   'select','click','doubleClick','hoverNode',\n   'blurNode','resize','dragEnd','startStabilization',\n   'stabilized','viewChanged','zoom'\n  ].forEach(function(eventName) {\n    // TODO: remove these on shutdown or removal.\n    network.on(eventName, event(eventName));\n  });\n\n  output({network: $.create(network)});\n};\n"
     }
   ],
   "twigs": []
