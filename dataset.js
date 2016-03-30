@@ -23,7 +23,7 @@ module.exports = {
         title: "Add Item",
         description: "Add itemto this dataset",
         async: true,
-        fn: function __ADD__(data, x, source, state, input, output, vis) {
+        fn: function __ADD__(data, source, state, input, $, output, vis) {
           var r = function() {
             state.dataset.add($.add);
           }.call(this);
@@ -38,7 +38,7 @@ module.exports = {
         title: "Update Item",
         description: "Update item within dataset",
         async: true,
-        fn: function __UPDATE__(data, x, source, state, input, output, vis) {
+        fn: function __UPDATE__(data, source, state, input, $, output, vis) {
           var r = function() {
             state.dataset.update($.update);
           }.call(this);
@@ -53,7 +53,7 @@ module.exports = {
         title: "Remove Item",
         description: "Remove item from this dataset",
         async: true,
-        fn: function __REMOVE__(data, x, source, state, input, output, vis) {
+        fn: function __REMOVE__(data, source, state, input, $, output, vis) {
           var r = function() {
             state.dataset.update($.remove);
           }.call(this);
@@ -78,7 +78,7 @@ module.exports = {
   },
   state: {},
   on: {
-    start: function __ONSTART__(data, x, source, state, input, output, vis) {
+    start: function __ONSTART__(data, source, state, input, $, output, vis) {
       var r = function() {
         // $.options will not work from here
         state.dataset = new vis.DataSet( /*$.options*/ );
